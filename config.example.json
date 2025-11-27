@@ -1,0 +1,16 @@
+{
+  "company_name": "Wellington Management",
+  "request": "I want to create a report on Wellington Management related to private markets. The research should focus on analyzing who are the key decision makers (full list, names and positions), what regions and sectors the company is active in, the assets under management, a tabular list of current firms they are invested in (what they acquired), what are the funds/strategies, and all recent news and announcements in tabular form. Please use ONLY information from their website and no outside knowledge. Use citations for everything you write. The study should result in a well-supported professional financial report.",
+  "seed_urls": [
+    "https://www.wellington.com/en/capabilities/private-investing",
+    "https://www.wellington.com/en/capabilities/private-investing/our-team",
+    "https://www.wellington.com/en/capabilities/private-investing/early-stage-venture",
+    "https://www.wellington.com/en/capabilities/private-investing/climate-growth",
+    "https://www.wellington.com/en/capabilities/private-investing/late-stage-biotechnology#accordion-e6d946989a-item-d2db1cee14",
+    "https://www.wellington.com/en/capabilities/private-investing/late-stage-biotechnology/case-study",
+    "https://www.wellington.com/en/capabilities/private-investing/late-stage-growth",
+    "https://www.wellington.com/en/capabilities/private-investing/late-stage-growth/case-study",
+    "https://www.wellington.com/en/capabilities/private-investing/private-credit",
+    "https://www.wellington.com/en/capabilities/private-investing/value-creation"
+  ]
+}
