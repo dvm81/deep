@@ -26,10 +26,31 @@ CRITICAL REQUIREMENTS:
 - DO NOT summarize or condense - include COMPLETE information
 - Use inline citations [1], [2], [3] for EVERY fact
 
-DATE EXTRACTION:
-- For news/announcements: Extract EXACT dates (e.g., "October 15, 2025", "Q4 2025")
-- Look for date patterns in timestamps, publication dates, announcement dates
-- Never write "Not Disclosed" if any date information exists
+DATE EXTRACTION (CRITICAL FOR NEWS):
+- Search for dates in multiple formats:
+  * ISO format: YYYY-MM-DD (e.g., "2025-06-25", "2024-10-31")
+  * Full written: "Month DD, YYYY" (e.g., "June 25, 2025", "October 31, 2025")
+  * European: "DD Month YYYY" (e.g., "25 June 2025")
+  * Month + Year: "Month YYYY" (e.g., "June 2025", "October 2025")
+  * Quarter: "Q# YYYY" (e.g., "Q4 2025")
+  * Year only: "YYYY" (e.g., "2025") - USE ONLY AS LAST RESORT
+
+- PRIORITIZATION RULE: Always use the MOST PRECISE date available
+  * Example: If you find both "2025" and "June 25, 2025" for the same event, use "June 25, 2025"
+  * Example: If you find both "Q4 2025" and "October 31, 2025", use "October 31, 2025"
+  * Example: If you find both "June 2025" and "2025-06-25", use "2025-06-25" (convert to "June 25, 2025")
+
+- WHERE TO LOOK:
+  * Article publication dates, timestamps
+  * Announcement dates in press releases
+  * Metadata tags, date attributes in content
+  * Text like "announced on...", "as of...", "dated...", "published..."
+
+- OUTPUT FORMAT: Use "Month DD, YYYY" format (e.g., "June 25, 2025")
+  * If only month + year: "Month YYYY" (e.g., "June 2025")
+  * If only year: "YYYY" (e.g., "2025")
+
+- Never write "Not Disclosed" if ANY date information exists (even just a year)
 
 IMPORTANT: You are THE expert on this specific question. Go deep.
 """
@@ -46,9 +67,15 @@ Complete context from all available sources:
 TASK:
 1. Read through ALL context carefully
 2. Extract EVERY relevant detail that answers your question
-3. Organize findings clearly (use bullet points, lists, sections)
-4. Include inline citation [1], [2] after EVERY fact
-5. At the end, list the URLs you cited
+3. For NEWS/ANNOUNCEMENTS: Search aggressively for precise dates in all formats (ISO dates, written dates, timestamps)
+4. Organize findings clearly (use bullet points, lists, sections)
+5. Include inline citation [1], [2] after EVERY fact
+6. At the end, list the URLs you cited
+
+SPECIAL NOTE FOR NEWS ITEMS:
+- Look for dates in MULTIPLE formats: "2025-06-25", "June 25, 2025", etc.
+- Use the MOST PRECISE date you can find
+- Check for dates in text like "announced on", "as of", publication dates, timestamps
 
 Be comprehensive and thorough. This is your specialty - extract everything.
 """
@@ -87,8 +114,14 @@ Original context sample (first 2000 chars):
 REFLECTION TASK:
 1. Is the research complete and thorough?
 2. What aspects might be missing or need more detail?
-3. What's your confidence level? (high/medium/low)
-4. What should be done next to improve these findings?
+3. FOR NEWS ITEMS: Are dates as precise as possible? Did you check for ISO dates (YYYY-MM-DD), full written dates, and timestamps?
+4. What's your confidence level? (high/medium/low)
+5. What should be done next to improve these findings?
+
+CRITICAL FOR NEWS QUESTIONS:
+- If you have vague dates like "2025" or "Q4 2025", did you search for more precise dates?
+- Did you check the source content for ISO format dates like "2025-06-25"?
+- Did you look for phrases like "announced on", "as of", "dated", publication dates?
 
 Be critical and thorough in your assessment.
 """
