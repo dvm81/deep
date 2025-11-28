@@ -54,9 +54,66 @@ class Note(BaseModel):
     sources: List[HttpUrl]             # URLs used in that note
 
 
+# V2.0: Supervisor + Sub-Agent models
+class Reflection(BaseModel):
+    """Self-critique and reflection from a sub-agent."""
+    is_complete: bool = Field(
+        description="Whether the research for this question is complete and thorough"
+    )
+    missing_aspects: List[str] = Field(
+        description="List of aspects that might be missing or need more detail",
+        default_factory=list
+    )
+    confidence: str = Field(
+        description="Confidence level in the findings: high, medium, or low"
+    )
+    next_steps: Optional[str] = Field(
+        description="What should be done next to improve the findings, if anything",
+        default=None
+    )
+
+
+class SubAgentTask(BaseModel):
+    """Task assignment for a sub-agent."""
+    task_id: str                       # e.g. "decision_makers"
+    question: str                      # The specific research question
+    context_urls: List[HttpUrl]        # URLs this agent should focus on
+
+
+class SubAgentResult(BaseModel):
+    """Result from a sub-agent's research."""
+    task_id: str
+    findings: str                      # Detailed findings with citations
+    reflection: Reflection             # Self-critique
+    sources: List[HttpUrl]             # URLs used
+
+
+class SupervisorReview(BaseModel):
+    """Supervisor's review of all sub-agent findings."""
+    overall_completeness: str = Field(
+        description="Assessment of overall research completeness"
+    )
+    gaps_identified: List[str] = Field(
+        description="Any gaps or missing information across all findings",
+        default_factory=list
+    )
+    refinement_needed: bool = Field(
+        description="Whether refinement iteration is needed",
+        default=False
+    )
+    ready_for_writing: bool = Field(
+        description="Whether findings are ready for report generation"
+    )
+
+
 class ResearchState(BaseModel):
     """Overall state of the research workflow."""
     brief: ResearchBrief
     pages: Dict[str, PageContent] = {} # key = URL string
     notes: Dict[str, Note] = {}        # key = question_id
+
+    # V2.0: Supervisor coordination
+    sub_agent_results: Dict[str, SubAgentResult] = {}  # key = task_id
+    supervisor_review: Optional[SupervisorReview] = None
+
     report_markdown: Optional[str] = None

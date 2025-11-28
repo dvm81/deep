@@ -1,10 +1,10 @@
-"""LangGraph workflow definition."""
+"""LangGraph workflow definition - V2.0 with Supervisor architecture."""
 
 from typing import TypedDict
 from langgraph.graph import StateGraph, END
 from ..schema import ResearchState
 from .planner import planning_node
-from .researcher import research_node
+from .supervisor import supervisor_node  # V2.0: Supervisor replaces researcher
 from .writer import writer_node
 
 
@@ -29,7 +29,9 @@ def planning_wrapper(state: ResearchState) -> ResearchState:
 
 
 def research_wrapper(state: ResearchState) -> ResearchState:
-    """Wrapper for research node that updates state in place.
+    """Wrapper for supervisor node that updates state in place.
+
+    V2.0: Uses supervisor that coordinates parallel sub-agents with reflection.
 
     Args:
         state: Current research state
@@ -37,7 +39,7 @@ def research_wrapper(state: ResearchState) -> ResearchState:
     Returns:
         Updated research state
     """
-    updates = research_node(state)
+    updates = supervisor_node(state)
     for k, v in updates.items():
         setattr(state, k, v)
     return state
@@ -59,10 +61,16 @@ def writer_wrapper(state: ResearchState) -> ResearchState:
 
 
 def build_graph():
-    """Build the LangGraph workflow.
+    """Build the LangGraph workflow - V2.0 with Supervisor architecture.
 
-    The workflow is linear:
-    plan -> research -> write -> END
+    The workflow is linear with parallel sub-agents:
+    plan -> supervisor (spawns parallel sub-agents with reflection) -> write -> END
+
+    V2.0 Features:
+    - Research Supervisor coordinates multiple sub-agents
+    - Sub-agents work in parallel (ThreadPool)
+    - Each sub-agent has reflection/self-critique
+    - Supervisor reviews all findings
 
     Returns:
         Compiled LangGraph application
