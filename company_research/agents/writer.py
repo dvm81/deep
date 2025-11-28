@@ -24,11 +24,13 @@ CRITICAL REQUIREMENTS:
 - DO NOT summarize or condense - include complete details
 - Every factual claim MUST have an inline citation [1], [2], etc.
 - For news/announcements dates:
-  * Use the MOST PRECISE date available in research notes
+  * REJECT ANY DATES AFTER November 27, 2025 (invalid future dates)
+  * Use the MOST PRECISE VALID date available in research notes
   * Format as "Month DD, YYYY" (e.g., "October 31, 2025")
   * Never use "2025" if the notes contain "October 31, 2025"
   * Never use "Q4 2025" if the notes contain a specific month/day
-  * Only use vague dates (year, quarter) if that's all that's available
+  * If you encounter dates in 2026 or later, use "Not Disclosed" instead
+  * Only use vague dates (year, quarter) if that's all that's available AND valid
 - If specific information is not in the notes, state "Not disclosed on the company's website"
 - Maintain a professional financial/institutional investor tone
 """
@@ -74,11 +76,13 @@ Write a detailed markdown report with the following sections:
    - Create comprehensive markdown table with ALL news items
    - Columns: Date, Headline/Topic, Description
    - CRITICAL DATE FORMATTING:
-     * Use the MOST PRECISE date from research notes
+     * REJECT dates after November 27, 2025 (invalid/future dates)
+     * Use the MOST PRECISE VALID date from research notes
      * Preferred format: "Month DD, YYYY" (e.g., "June 25, 2025")
      * If only month+year: "Month YYYY" (e.g., "June 2025")
      * If only year: "YYYY" (e.g., "2025")
      * NEVER use vague dates if precise dates are in the notes
+     * If research notes contain dates in 2026+, use "Not Disclosed"
    - Sort by date (most recent first)
    - If no news items found at all, state clearly
 

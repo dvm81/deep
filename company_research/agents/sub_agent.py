@@ -35,10 +35,18 @@ DATE EXTRACTION (CRITICAL FOR NEWS):
   * Quarter: "Q# YYYY" (e.g., "Q4 2025")
   * Year only: "YYYY" (e.g., "2025") - USE ONLY AS LAST RESORT
 
-- PRIORITIZATION RULE: Always use the MOST PRECISE date available
+- DATE VALIDATION (CRITICAL):
+  * REJECT ANY DATES AFTER November 27, 2025 (today's date)
+  * If you find dates in 2026 or later, they are INVALID - likely placeholder or error dates
+  * If the only date available is invalid (future date), use "Not Disclosed" instead
+  * Common invalid patterns: "October 31, 2026", "2026-09-30", "November 30, 2026"
+  * Double-check: Does this date make sense given today is November 27, 2025?
+
+- PRIORITIZATION RULE: Always use the MOST PRECISE VALID date available (that is NOT in the future)
   * Example: If you find both "2025" and "June 25, 2025" for the same event, use "June 25, 2025"
   * Example: If you find both "Q4 2025" and "October 31, 2025", use "October 31, 2025"
   * Example: If you find both "June 2025" and "2025-06-25", use "2025-06-25" (convert to "June 25, 2025")
+  * Example: If you find "October 31, 2026" (INVALID), look for alternative valid dates or use "Not Disclosed"
 
 - WHERE TO LOOK:
   * Article publication dates, timestamps
@@ -50,7 +58,7 @@ DATE EXTRACTION (CRITICAL FOR NEWS):
   * If only month + year: "Month YYYY" (e.g., "June 2025")
   * If only year: "YYYY" (e.g., "2025")
 
-- Never write "Not Disclosed" if ANY date information exists (even just a year)
+- Never write "Not Disclosed" if ANY VALID date information exists (even just a year)
 
 IMPORTANT: You are THE expert on this specific question. Go deep.
 """
@@ -74,8 +82,10 @@ TASK:
 
 SPECIAL NOTE FOR NEWS ITEMS:
 - Look for dates in MULTIPLE formats: "2025-06-25", "June 25, 2025", etc.
-- Use the MOST PRECISE date you can find
+- Use the MOST PRECISE VALID date you can find (NOT future dates)
+- REJECT dates after November 27, 2025 - they are invalid
 - Check for dates in text like "announced on", "as of", publication dates, timestamps
+- If you encounter dates in 2026, ignore them and look for alternative valid dates
 
 Be comprehensive and thorough. This is your specialty - extract everything.
 """
@@ -122,6 +132,7 @@ CRITICAL FOR NEWS QUESTIONS:
 - If you have vague dates like "2025" or "Q4 2025", did you search for more precise dates?
 - Did you check the source content for ISO format dates like "2025-06-25"?
 - Did you look for phrases like "announced on", "as of", "dated", publication dates?
+- DATE VALIDATION: Are there any dates AFTER November 27, 2025? If yes, they are INVALID and should be removed/replaced
 
 Be critical and thorough in your assessment.
 """

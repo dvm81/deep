@@ -1,10 +1,15 @@
-# System Architecture Diagram
+# System Architecture Diagram - V2.1
 
 ## Overview
 
-The Company Private Investing Research Agent is built on a 3-phase LangGraph architecture that orchestrates multiple specialized agents to produce comprehensive research reports.
+The Company Private Investing Research Agent is built on a **3-phase LangGraph architecture with Supervisor + Sub-Agents** that orchestrates multiple specialized agents with reflection capabilities to produce comprehensive, high-quality research reports.
 
-## High-Level Architecture
+**Version History:**
+- **V1.0**: Single research agent (linear)
+- **V2.0**: Supervisor + Sub-Agents with reflection (parallel)
+- **V2.1**: Enhanced date extraction precision
+
+## High-Level Architecture (V2.1)
 
 ```mermaid
 graph TB
@@ -12,16 +17,22 @@ graph TB
     CLI --> Graph[LangGraph Workflow<br/>agents/graph.py]
 
     Graph --> Phase1[Phase 1: SCOPE<br/>Planning Agent]
-    Graph --> Phase2[Phase 2: RESEARCH<br/>Research Agent]
+    Graph --> Phase2[Phase 2: RESEARCH<br/>SUPERVISOR<br/>+ Sub-Agents Parallel]
     Graph --> Phase3[Phase 3: WRITE<br/>Writer Agent]
 
     Phase1 --> Phase2
     Phase2 --> Phase3
-    Phase3 --> Output[Markdown Report]
+    Phase3 --> Output[Markdown Report<br/>447 lines, 49KB]
+
+    Phase2 -.->|spawns| SubAgents[6 Sub-Agents<br/>Running in Parallel]
+    SubAgents -.->|Reflection| SelfCritique[Self-Critique<br/>Completeness Check]
+    SelfCritique -.->|Results| Phase2
 
     style Phase1 fill:#e1f5ff
     style Phase2 fill:#fff4e1
     style Phase3 fill:#e8f5e9
+    style SubAgents fill:#ffe0b2
+    style SelfCritique fill:#f3e5f5
 ```
 
 ## Detailed Component Architecture
