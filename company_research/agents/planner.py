@@ -91,7 +91,7 @@ def planning_node(state: ResearchState) -> Dict[str, Any]:
         f"Summarize any disclosed assets under management (AUM) or platform-level metrics for {state.brief.company_name}'s private markets business.",
         f"List the private investing strategies, funds, and programs and explain their focus.",
         f"Summarize the portfolio / current firms {state.brief.company_name} is invested in, as disclosed in the scoped URLs.",
-        f"Summarize recent news and announcements related to {state.brief.company_name}'s private markets activities.",
+        f"Extract EVERY single news item and announcement related to {state.brief.company_name}'s private markets activities. Include ALL fund closures, ALL portfolio company acquisitions/exits, ALL leadership appointments, ALL partnerships, ALL awards/recognitions, ALL press releases, and ALL other news items. Do not summarize - list each news item individually with its date and details.",
     ]
 
     return {"brief": state.brief}

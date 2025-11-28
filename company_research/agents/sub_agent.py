@@ -26,6 +26,12 @@ CRITICAL REQUIREMENTS:
 - DO NOT summarize or condense - include COMPLETE information
 - Use inline citations [1], [2], [3] for EVERY fact
 
+SPECIAL EMPHASIS FOR NEWS QUESTIONS:
+- If your question is about "news" or "announcements", you must extract EVERY SINGLE news item
+- Search through ALL sources for: fund closures, acquisitions, exits, appointments, partnerships, awards, surveys, press releases
+- Count the news items as you extract them to ensure you don't miss any
+- DO NOT skip items even if they seem minor - extract everything
+
 DATE EXTRACTION (CRITICAL FOR NEWS):
 - Search for dates in multiple formats:
   * ISO format: YYYY-MM-DD (e.g., "2025-06-25", "2024-10-31")
@@ -133,6 +139,8 @@ CRITICAL FOR NEWS QUESTIONS:
 - Did you check the source content for ISO format dates like "2025-06-25"?
 - Did you look for phrases like "announced on", "as of", "dated", publication dates?
 - DATE VALIDATION: Are there any dates AFTER November 27, 2025? If yes, they are INVALID and should be removed/replaced
+- COMPLETENESS CHECK: If the question is about news, did you extract EVERY news item from ALL sources? Count them - did you extract 5 items? 10? 20? Are you sure there aren't more?
+- Did you search for: fund closures, acquisitions, exits, appointments, partnerships, awards, surveys, press releases?
 
 Be critical and thorough in your assessment.
 """
