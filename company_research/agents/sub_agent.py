@@ -42,11 +42,14 @@ DATE EXTRACTION (CRITICAL FOR NEWS):
   * Year only: "YYYY" (e.g., "2025") - USE ONLY AS LAST RESORT
 
 - DATE VALIDATION (CRITICAL):
-  * REJECT ANY DATES AFTER November 27, 2025 (today's date)
-  * If you find dates in 2026 or later, they are INVALID - likely placeholder or error dates
-  * If the only date available is invalid (future date), use "Not Disclosed" instead
-  * Common invalid patterns: "October 31, 2026", "2026-09-30", "November 30, 2026"
-  * Double-check: Does this date make sense given today is November 27, 2025?
+  * IMPORTANT: Dates in 2026 (like "2026-11-30", "2026-10-31") are often ARCHIVE EXPIRY dates, not publication dates
+  * If you see a date in 2026, treat it as an archive date and convert the month to 2025
+    - Example: "2026-11-30" → article likely published "November 2025"
+    - Example: "2026-10-31" → article likely published "October 2025"
+    - Example: "2026-09-30" → article likely published "September 2025"
+  * For news items with 2026 archive dates: use the same month but year 2025
+  * For dates beyond 2026, or if unsure: use "2025" or look for other contextual clues
+  * If no date is available at all in any format, use "2025"
 
 - PRIORITIZATION RULE: Always use the MOST PRECISE VALID date available (that is NOT in the future)
   * Example: If you find both "2025" and "June 25, 2025" for the same event, use "June 25, 2025"
