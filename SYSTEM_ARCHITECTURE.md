@@ -1,15 +1,19 @@
-# System Architecture Diagram - V2.1
+# System Architecture Diagram - V2.5
 
 ## Overview
 
-The Company Private Investing Research Agent is built on a **3-phase LangGraph architecture with Supervisor + Sub-Agents** that orchestrates multiple specialized agents with reflection capabilities to produce comprehensive, high-quality research reports.
+The Company Private Investing Research Agent is built on a **3-phase LangGraph architecture with Supervisor + Sub-Agents** that orchestrates multiple specialized agents with reflection capabilities to produce comprehensive, high-quality research reports in both Markdown and JSON formats.
 
 **Version History:**
 - **V1.0**: Single research agent (linear)
 - **V2.0**: Supervisor + Sub-Agents with reflection (parallel)
 - **V2.1**: Enhanced date extraction precision
+- **V2.2**: Date validation (reject future dates)
+- **V2.3**: Comprehensive news extraction (ALL items)
+- **V2.4**: Structured JSON report output
+- **V2.5**: Intelligent date handling (archive expiry dates)
 
-## High-Level Architecture (V2.1)
+## High-Level Architecture (V2.5)
 
 ```mermaid
 graph TB
@@ -18,21 +22,27 @@ graph TB
 
     Graph --> Phase1[Phase 1: SCOPE<br/>Planning Agent]
     Graph --> Phase2[Phase 2: RESEARCH<br/>SUPERVISOR<br/>+ Sub-Agents Parallel]
-    Graph --> Phase3[Phase 3: WRITE<br/>Writer Agent]
+    Graph --> Phase3[Phase 3: WRITE<br/>Writer Agent<br/>+ JSON Extractor]
 
     Phase1 --> Phase2
     Phase2 --> Phase3
-    Phase3 --> Output[Markdown Report<br/>447 lines, 49KB]
+    Phase3 --> OutputMD[Markdown Report<br/>~450 lines, 59KB]
+    Phase3 --> OutputJSON[JSON Report<br/>Structured Data, 35KB]
 
     Phase2 -.->|spawns| SubAgents[6 Sub-Agents<br/>Running in Parallel]
     SubAgents -.->|Reflection| SelfCritique[Self-Critique<br/>Completeness Check]
     SelfCritique -.->|Results| Phase2
+
+    Phase2 -.->|Date Handling| DateLogic[Archive Date Intelligence<br/>2026 dates → 2025]
+    DateLogic -.->|Validated Dates| Phase2
 
     style Phase1 fill:#e1f5ff
     style Phase2 fill:#fff4e1
     style Phase3 fill:#e8f5e9
     style SubAgents fill:#ffe0b2
     style SelfCritique fill:#f3e5f5
+    style DateLogic fill:#fff3e0
+    style OutputJSON fill:#e1bee7
 ```
 
 ## Detailed Component Architecture
@@ -59,13 +69,14 @@ graph TB
     end
 
     subgraph "State Management"
-        ResearchState[ResearchState<br/>- brief<br/>- pages<br/>- notes<br/>- report_markdown]
+        ResearchState[ResearchState<br/>- brief<br/>- pages<br/>- notes<br/>- sub_agent_results<br/>- supervisor_review<br/>- report_markdown<br/>- report_json]
     end
 
     subgraph "Output Layer"
         Pages[artifacts/pages/<br/>*.json]
         Notes[artifacts/notes.json]
-        Report[artifacts/<company>_report.md]
+        ReportMD[artifacts/<company>_report.md]
+        ReportJSON[artifacts/<company>_report.json]
         State[artifacts/state.json]
     end
 
@@ -90,14 +101,16 @@ graph TB
     Researcher --> ResearchState
     Writer --> ResearchState
     Writer --> Storage
-    Storage --> Report
+    Storage --> ReportMD
+    Storage --> ReportJSON
     Storage --> State
     Storage --> Notes
 
     style Config fill:#ffebee
     style Env fill:#ffebee
     style ResearchState fill:#fff9c4
-    style Report fill:#c8e6c9
+    style ReportMD fill:#c8e6c9
+    style ReportJSON fill:#e1bee7
 ```
 
 ## Technology Stack
@@ -148,7 +161,16 @@ classDiagram
         +ResearchBrief
         +PageContent
         +Note
+        +Reflection
+        +SubAgentTask
+        +SubAgentResult
+        +SupervisorReview
         +ResearchState
+        +KeyDecisionMaker
+        +PortfolioCompany
+        +Strategy
+        +NewsAnnouncement
+        +StructuredReport
     }
 
     class scraping {
@@ -160,6 +182,7 @@ classDiagram
         +save_page()
         +save_notes()
         +save_report()
+        +save_report_json()
         +save_state()
     }
 
@@ -169,15 +192,22 @@ classDiagram
         +BRIEF_PROMPT
     }
 
-    class researcher {
-        +research_node()
-        +build_context()
-        +RESEARCH_PROMPT
+    class supervisor {
+        +supervisor_node()
+        +execute_sub_agent()
+        +SUPERVISOR_REVIEW_PROMPT
+    }
+
+    class sub_agent {
+        +execute_sub_agent()
+        +SUB_AGENT_PROMPT
+        +REFLECTION_PROMPT
     }
 
     class writer {
         +writer_node()
         +WRITER_PROMPT
+        +JSON_EXTRACTOR_PROMPT
     }
 
     class graph {
@@ -192,17 +222,21 @@ classDiagram
     main --> graph
 
     graph --> planner
-    graph --> researcher
+    graph --> supervisor
     graph --> writer
     graph --> schema
 
     planner --> config
     planner --> schema
 
-    researcher --> config
-    researcher --> schema
-    researcher --> scraping
-    researcher --> storage
+    supervisor --> config
+    supervisor --> schema
+    supervisor --> sub_agent
+    supervisor --> scraping
+    supervisor --> storage
+
+    sub_agent --> config
+    sub_agent --> schema
 
     writer --> config
     writer --> schema

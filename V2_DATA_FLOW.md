@@ -1,4 +1,4 @@
-# V2.0 Data Flow with Supervisor + Sub-Agents
+# V2.5 Data Flow with Supervisor + Sub-Agents + JSON Output
 
 ## Complete V2.0 Research Phase Data Flow
 
@@ -500,9 +500,9 @@ flowchart TD
     style Report fill:#c8e6c9
 ```
 
-## Summary: V2.0 Data Flow Advantages
+## Summary: V2.5 Data Flow Advantages
 
-| Aspect | V1.0 | V2.0 | Benefit |
+| Aspect | V1.0 | V2.0-V2.5 | Benefit |
 |--------|------|------|---------|
 | **Context per LLM call** | Full context × 6 (sequential) | Full context × 6 (parallel) | Faster |
 | **Specialization** | Generic research | Focused per question | Deeper |
@@ -512,14 +512,182 @@ flowchart TD
 | **State richness** | Basic | Full audit trail | Debuggable |
 | **Citation precision** | Per note | Per note + per agent | Maintained |
 | **Date precision** | Good | Enhanced (V2.1) | Better |
+| **Date validation** | None | Archive date intelligence (V2.5) | Accurate |
+| **Output formats** | Markdown only | Markdown + JSON (V2.4) | Flexible |
+| **News extraction** | Basic | Comprehensive ALL items (V2.3) | Complete |
 
-## Key Data Transformations
+## V2.4 JSON Output Generation Flow
+
+```mermaid
+flowchart TD
+    Notes[All Research Notes<br/>6 notes with findings]
+
+    Step1[Step 1: Generate<br/>Markdown Report]
+
+    MDLLM[GPT-4.1 API<br/>WRITER_PROMPT]
+
+    MDReport[Markdown Report<br/>~59 KB, 450 lines]
+
+    Save1[save_report<br/>artifacts/company_report.md]
+
+    Step2[Step 2: Extract Structured<br/>JSON from Markdown]
+
+    JSONLLM[GPT-4.1 API<br/>JSON_EXTRACTOR_PROMPT<br/>with_structured_output<br/>method=function_calling]
+
+    Schema{StructuredReport Schema}
+
+    Fields["- company_name<br/>- report_date<br/>- executive_summary<br/>- overview<br/>- key_decision_makers[]<br/>- regions_and_sectors{}<br/>- aum_metrics{}<br/>- portfolio_companies[]<br/>- strategies[]<br/>- news_announcements[]<br/>- conclusion<br/>- sources[]"]
+
+    JSONObj[StructuredReport Object<br/>Pydantic validated]
+
+    JSONDict[report_json: Dict<br/>model_dump]
+
+    Save2[save_report_json<br/>artifacts/company_report.json]
+
+    Notes --> Step1
+    Step1 --> MDLLM
+    MDLLM --> MDReport
+    MDReport --> Save1
+
+    MDReport --> Step2
+    Step2 --> JSONLLM
+    JSONLLM --> Schema
+    Schema --> Fields
+    Fields --> JSONObj
+    JSONObj --> JSONDict
+    JSONDict --> Save2
+
+    Save1 --> BothReports[Both Formats Available]
+    Save2 --> BothReports
+
+    style Notes fill:#fff9c4
+    style MDLLM fill:#4285f4,color:#fff
+    style JSONLLM fill:#4285f4,color:#fff
+    style MDReport fill:#c8e6c9
+    style JSONDict fill:#e1bee7
+    style BothReports fill:#b2dfdb
+```
+
+## V2.5 Intelligent Date Handling Flow
+
+```mermaid
+flowchart TD
+    Scrape[Scraped Markdown<br/>Contains dates]
+
+    DateTypes{Date Types Found}
+
+    Valid["Valid Dates:<br/>- 2025-06-25<br/>- June 25, 2025<br/>- November 2025<br/>- Q4 2025"]
+
+    Archive["Archive Expiry Dates:<br/>- 2026-11-30<br/>- 2026-10-31<br/>- 2026-09-30"]
+
+    Future["Invalid Future:<br/>- 2027+<br/>- Clearly wrong"]
+
+    Scrape --> DateTypes
+    DateTypes --> Valid
+    DateTypes --> Archive
+    DateTypes --> Future
+
+    ValidProcess[Direct Use:<br/>Already valid]
+
+    ArchiveLogic{Archive Date<br/>Intelligence}
+
+    Convert["Convert to Publication Date:<br/>2026-11-30 → November 2025<br/>2026-10-31 → October 2025<br/>2026-09-30 → September 2025"]
+
+    FutureProcess[Reject:<br/>Use 'Not Disclosed'<br/>or look for alternatives]
+
+    Valid --> ValidProcess
+    Archive --> ArchiveLogic
+    ArchiveLogic --> Convert
+    Future --> FutureProcess
+
+    Validation{Date Validation<br/>in Sub-Agent}
+
+    ValidProcess --> Validation
+    Convert --> Validation
+    FutureProcess --> Validation
+
+    Validation -->|Pass| Extract[Extract to Findings<br/>with validated date]
+    Validation -->|Fail| Skip[Skip or flag]
+
+    Extract --> Reflection{Self-Critique:<br/>Are dates valid?<br/>Check ≤ Nov 27, 2025}
+
+    Reflection -->|Yes| Accept[Accept findings]
+    Reflection -->|No| Flag[Flag for correction]
+
+    Accept --> Result[SubAgentResult<br/>with validated dates]
+    Flag --> Result
+
+    Result --> Writer[Writer formats<br/>final dates]
+
+    WriterCheck{Writer validates:<br/>No dates after<br/>November 27, 2025}
+
+    Writer --> WriterCheck
+
+    WriterCheck -->|Valid| OutputMD[Markdown Report<br/>Valid dates only]
+    WriterCheck -->|Valid| OutputJSON[JSON Report<br/>Valid dates only]
+
+    style Archive fill:#fff3e0
+    style Convert fill:#c5e1a5
+    style ArchiveLogic fill:#fff9c4
+    style Future fill:#ffcdd2
+    style Valid fill:#c8e6c9
+    style OutputMD fill:#c8e6c9
+    style OutputJSON fill:#e1bee7
+```
+
+## Enhanced Data Size Evolution (V2.4+)
+
+```mermaid
+graph LR
+    subgraph "Input"
+        Config[config.json<br/>~1 KB]
+    end
+
+    subgraph "Scraping"
+        HTML[Raw HTML<br/>10 URLs<br/>1-5 MB]
+        MD[Markdown<br/>300 KB - 1 MB]
+    end
+
+    subgraph "Research"
+        Context[Combined Context<br/>300 KB - 1 MB]
+        Results[Sub-Agent Results<br/>60-120 KB]
+        Notes[6 Notes<br/>60-120 KB]
+    end
+
+    subgraph "Writing Phase"
+        ReportMD[Markdown Report<br/>59 KB, 450 lines]
+        ReportJSON[JSON Report<br/>35 KB structured]
+    end
+
+    subgraph "Storage"
+        StateFile[state.json<br/>~4 MB<br/>complete audit trail]
+        PagesDir[artifacts/pages/<br/>10 × JSON files]
+        NotesFile[artifacts/notes.json<br/>60-120 KB]
+    end
+
+    Config --> HTML
+    HTML --> MD
+    MD --> Context
+    Context --> Results
+    Results --> Notes
+    Notes --> ReportMD
+    ReportMD --> ReportJSON
+    MD --> PagesDir
+    Results --> StateFile
+    Notes --> NotesFile
+
+    style ReportJSON fill:#e1bee7
+    style ReportMD fill:#c8e6c9
+```
+
+## Key Data Transformations (Updated for V2.5)
 
 1. **URL → PageContent**: HTML → Markdown (html2text)
 2. **PageContent → Context**: Concatenate all pages (no truncation)
-3. **Context + Question → Findings**: GPT-4.1 research
-4. **Findings → Reflection**: GPT-4.1 self-critique
+3. **Context + Question → Findings**: GPT-4.1 research (with date validation)
+4. **Findings → Reflection**: GPT-4.1 self-critique (checks dates)
 5. **Findings + Reflection → SubAgentResult**: Structured result
 6. **All SubAgentResults → SupervisorReview**: Gap analysis
 7. **SubAgentResults → Notes**: Writer-ready format
-8. **Notes → Report**: Final markdown with citations
+8. **Notes → Markdown Report**: Final markdown with citations (validated dates)
+9. **Markdown Report → JSON Report**: Structured extraction (GPT-4.1)
