@@ -1,10 +1,11 @@
 """Writer agent for generating the final report."""
 
 from typing import Dict, Any
+from datetime import datetime
 from langchain_core.prompts import ChatPromptTemplate
 from ..config import get_llm
-from ..schema import ResearchState
-from ..storage import save_report
+from ..schema import ResearchState, StructuredReport
+from ..storage import save_report, save_report_json
 
 
 FINAL_REPORT_SYSTEM = """
@@ -104,22 +105,66 @@ WRITER_PROMPT = ChatPromptTemplate.from_messages([
 ])
 
 
+# JSON structured output prompt
+JSON_EXTRACTOR_SYSTEM = """
+You are a data extraction specialist converting markdown research reports into structured JSON format.
+
+CURRENT DATE: November 27, 2025
+
+Your task:
+- Extract key information from the markdown report
+- Structure it according to the JSON schema
+- Preserve all important details
+- Maintain data accuracy
+"""
+
+JSON_EXTRACTOR_HUMAN = """
+Extract structured data from this research report and format it as JSON.
+
+Company: {company_name}
+
+Full Markdown Report:
+{markdown_report}
+
+Instructions:
+1. Extract executive summary and overview text
+2. Parse key decision makers into structured list (name, title, location)
+3. Extract regions and sectors as separate lists
+4. Parse AUM metrics
+5. Convert portfolio companies table to structured list
+6. Extract strategies/funds/programs with descriptions
+7. Parse news announcements table (date, headline, description)
+8. Extract conclusion
+9. Extract all source URLs
+
+Return structured JSON matching the StructuredReport schema.
+"""
+
+JSON_EXTRACTOR_PROMPT = ChatPromptTemplate.from_messages([
+    ("system", JSON_EXTRACTOR_SYSTEM),
+    ("user", JSON_EXTRACTOR_HUMAN),
+])
+
+
 def writer_node(state: ResearchState) -> Dict[str, Any]:
     """Execute the writing phase.
 
     This node:
     1. Compiles all research notes
     2. Generates a professional markdown report
-    3. Saves the report to file
+    3. Generates structured JSON report
+    4. Saves both reports to files
 
     Args:
         state: Current research state
 
     Returns:
-        Dictionary with the report markdown
+        Dictionary with the report markdown and JSON
     """
     llm = get_llm()
+    json_llm = get_llm().with_structured_output(StructuredReport, method="function_calling")
 
+    # Step 1: Generate markdown report
     notes_text = ""
     for k, note in state.notes.items():
         notes_text += f"### {k}\n{note.content}\n\n"
@@ -133,4 +178,24 @@ def writer_node(state: ResearchState) -> Dict[str, Any]:
     report_md = resp.content
     state.report_markdown = report_md
     save_report(report_md, state.brief.company_name)
-    return {"report_markdown": report_md}
+
+    # Step 2: Generate structured JSON report
+    print("  → Generating structured JSON report...")
+    structured_report = (JSON_EXTRACTOR_PROMPT | json_llm).invoke({
+        "company_name": state.brief.company_name,
+        "markdown_report": report_md,
+    })
+
+    # Add report date
+    structured_report.report_date = datetime.now().strftime("%Y-%m-%d")
+
+    # Convert to dict for storage
+    report_json = structured_report.model_dump()
+    state.report_json = report_json
+    save_report_json(report_json, state.brief.company_name)
+    print("  ✓ JSON report generated")
+
+    return {
+        "report_markdown": report_md,
+        "report_json": report_json
+    }

@@ -117,3 +117,62 @@ class ResearchState(BaseModel):
     supervisor_review: Optional[SupervisorReview] = None
 
     report_markdown: Optional[str] = None
+    report_json: Optional[Dict] = None
+
+
+# Structured JSON Report Models
+class KeyDecisionMaker(BaseModel):
+    """Individual decision maker/leader."""
+    name: str
+    title: str
+    location: Optional[str] = None
+
+
+class PortfolioCompany(BaseModel):
+    """Portfolio company information."""
+    name: str
+    sector: str
+    stage: str  # e.g., "Unrealized", "Exited", "Public"
+    details: Optional[str] = None
+
+
+class Strategy(BaseModel):
+    """Investment strategy/fund/program."""
+    name: str
+    description: str
+    focus: Optional[str] = None
+
+
+class NewsAnnouncement(BaseModel):
+    """News or announcement item."""
+    date: str
+    headline: str
+    description: str
+
+
+class RegionsAndSectors(BaseModel):
+    """Regions and sectors structure."""
+    regions: List[str] = Field(default_factory=list)
+    sectors: List[str] = Field(default_factory=list)
+
+
+class AUMMetrics(BaseModel):
+    """Assets under management metrics."""
+    total_aum: Optional[str] = None
+    details: Optional[str] = None
+
+
+class StructuredReport(BaseModel):
+    """Structured JSON format of the research report."""
+    company_name: str
+    report_date: str
+    executive_summary: str
+    overview: str
+    key_decision_makers: List[KeyDecisionMaker]
+    regions_and_sectors: RegionsAndSectors
+    aum_metrics: AUMMetrics
+    portfolio_companies: List[PortfolioCompany]
+    strategies: List[Strategy]
+    news_announcements: List[NewsAnnouncement]
+    conclusion: str
+    sources: List[str]

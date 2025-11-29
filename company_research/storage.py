@@ -49,6 +49,23 @@ def save_report(report_md: str, company_name: str) -> Path:
     return out
 
 
+def save_report_json(report_json: Dict, company_name: str) -> Path:
+    """Save the final JSON report.
+
+    Args:
+        report_json: The structured report data as dictionary
+        company_name: Name of the company for the filename
+
+    Returns:
+        Path to the saved JSON report file
+    """
+    safe_name = company_name.lower().replace(" ", "_")
+    out = BASE_DIR / f"{safe_name}_private_investing_report.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(report_json, indent=2, ensure_ascii=False), encoding="utf-8")
+    return out
+
+
 def save_state(state: ResearchState) -> None:
     """Save the entire research state to JSON.
 
