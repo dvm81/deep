@@ -4,6 +4,7 @@ from typing import List
 from langchain_core.prompts import ChatPromptTemplate
 from ..config import get_llm
 from ..schema import SubAgentTask, SubAgentResult, Reflection, PageContent
+from ..logger import log_verbose, log_llm_call, format_size, Colors
 
 
 # Sub-agent research prompt

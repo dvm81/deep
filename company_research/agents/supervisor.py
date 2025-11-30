@@ -10,6 +10,10 @@ from ..schema import (
 from ..scraping import CompanyScraper
 from ..storage import save_page
 from .sub_agent import execute_sub_agent
+from ..logger import (
+    log_phase, log_step, log_llm_call, log_verbose, log_success,
+    log_warning, log_error, log_metric, Colors, Timer, format_size
+)
 
 
 SUPERVISOR_REVIEW_SYSTEM = """

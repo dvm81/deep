@@ -4,6 +4,10 @@ from typing import Dict, Any
 from langchain_core.prompts import ChatPromptTemplate
 from ..config import get_llm
 from ..schema import ClarifyWithUser, ResearchState, ResearchQuestion
+from ..logger import (
+    log_phase, log_step, log_llm_call, log_verbose, log_tree,
+    log_success, Colors, Timer
+)
 
 
 # Clarifier model and prompt
@@ -71,16 +75,51 @@ def planning_node(state: ResearchState) -> Dict[str, Any]:
     Returns:
         Dictionary with updated brief
     """
+    log_phase(1, "PLANNING")
+
     request = state.brief.main_question
 
     # Clarification step (non-interactive in this implementation)
-    _clarify = (CLARIFY_PROMPT | clarify_model).invoke({"request": request})
+    log_step(f"{Colors.THINKING} Checking if clarification needed...", emoji="")
+    log_verbose(f"   Request: {request[:200]}...", indent=0)
+
+    with Timer("Clarification check"):
+        _clarify = (CLARIFY_PROMPT | clarify_model).invoke({"request": request})
+
+    # Get clarifier prompt for logging
+    clarify_prompt_text = CLARIFY_PROMPT.format(request=request)
+    log_llm_call(
+        purpose="Clarification Decision",
+        prompt_preview=clarify_prompt_text,
+        response_preview=f"need_clarification: {_clarify.need_clarification}",
+        truncate=300
+    )
+
+    if _clarify.need_clarification:
+        log_verbose(f"   Would ask: {_clarify.question}")
+    else:
+        log_success("No clarification needed", indent=1)
 
     # Generate research brief
-    rq = (BRIEF_PROMPT | research_brief_model).invoke({
-        "request": request,
-        "company_name": state.brief.company_name,
-    })
+    log_step(f"\n{Colors.WRITE} Generating research sub-questions...", emoji="")
+
+    with Timer("Brief generation"):
+        rq = (BRIEF_PROMPT | research_brief_model).invoke({
+            "request": request,
+            "company_name": state.brief.company_name,
+        })
+
+    # Get brief prompt for logging
+    brief_prompt_text = BRIEF_PROMPT.format(
+        request=request,
+        company_name=state.brief.company_name
+    )
+    log_llm_call(
+        purpose="Research Brief Generation",
+        prompt_preview=brief_prompt_text,
+        response_preview=rq.research_brief,
+        truncate=500
+    )
 
     state.brief.main_question = rq.research_brief
 
@@ -93,5 +132,17 @@ def planning_node(state: ResearchState) -> Dict[str, Any]:
         f"Summarize the portfolio / current firms {state.brief.company_name} is invested in, as disclosed in the scoped URLs.",
         f"Extract EVERY single news item and announcement related to {state.brief.company_name}'s private markets activities. Include ALL fund closures, ALL portfolio company acquisitions/exits, ALL leadership appointments, ALL partnerships, ALL awards/recognitions, ALL press releases, and ALL other news items. Do not summarize - list each news item individually with its date and details.",
     ]
+
+    # Display generated sub-questions
+    print(f"\n   {Colors.BOLD}Generated {len(state.brief.sub_questions)} Sub-Questions:{Colors.RESET}")
+    for idx, q in enumerate(state.brief.sub_questions, 1):
+        # Shorten for display
+        short_q = q[:80] + "..." if len(q) > 80 else q
+        print(f"      {Colors.DIM}{idx}. {short_q}{Colors.RESET}")
+        # Full question in verbose mode
+        if len(q) > 80:
+            log_verbose(f"         Full: {q}", indent=0)
+
+    log_success("\nPlanning Complete", indent=0)
 
     return {"brief": state.brief}
