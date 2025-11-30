@@ -6,6 +6,10 @@ from langchain_core.prompts import ChatPromptTemplate
 from ..config import get_llm
 from ..schema import ResearchState, StructuredReport
 from ..storage import save_report, save_report_json
+from ..logger import (
+    log_phase, log_step, log_llm_call, log_verbose, log_success,
+    log_metric, Colors, Timer, format_size
+)
 
 
 FINAL_REPORT_SYSTEM = """
@@ -161,39 +165,107 @@ def writer_node(state: ResearchState) -> Dict[str, Any]:
     Returns:
         Dictionary with the report markdown and JSON
     """
+    log_phase(3, "REPORT WRITING")
+
     llm = get_llm()
     json_llm = get_llm().with_structured_output(StructuredReport, method="function_calling")
 
-    # Step 1: Generate markdown report
-    notes_text = ""
-    for k, note in state.notes.items():
-        notes_text += f"### {k}\n{note.content}\n\n"
+    # Step 1: Compile research notes
+    log_step(f"{Colors.WRITE} [1/2] Compiling research notes...", emoji="")
+    log_verbose(f"   Compiling {len(state.notes)} research notes...")
 
-    resp = (WRITER_PROMPT | llm).invoke({
-        "company_name": state.brief.company_name,
-        "brief": state.brief.main_question,
-        "notes": notes_text,
-    })
+    notes_text = ""
+    total_notes_size = 0
+    for k, note in state.notes.items():
+        note_section = f"### {k}\n{note.content}\n\n"
+        notes_text += note_section
+        total_notes_size += len(note.content)
+        log_verbose(f"      {k}: {format_size(len(note.content))}, {len(note.sources)} sources")
+
+    log_success(f"Compiled {len(state.notes)} notes (total: {format_size(total_notes_size)})", indent=1)
+    log_verbose(f"   Average note size: {format_size(total_notes_size // len(state.notes))}")
+
+    # Generate markdown report
+    log_step(f"\n{Colors.WRITE} Generating markdown report...", emoji="")
+
+    # Prepare prompt preview for logging
+    writer_prompt_text = WRITER_PROMPT.format(
+        company_name=state.brief.company_name,
+        brief=state.brief.main_question,
+        notes=notes_text[:800] + "..."  # Truncated for preview
+    )
+
+    with Timer("Markdown Report Generation"):
+        resp = (WRITER_PROMPT | llm).invoke({
+            "company_name": state.brief.company_name,
+            "brief": state.brief.main_question,
+            "notes": notes_text,
+        })
 
     report_md = resp.content
+
+    log_llm_call(
+        purpose="Markdown Report Generation",
+        prompt_preview=writer_prompt_text,
+        response_preview=report_md,
+        truncate=600
+    )
+
+    # Calculate report statistics
+    lines = report_md.count('\n') + 1
+    report_size = len(report_md)
+    log_verbose(f"   Report statistics:")
+    log_verbose(f"      Size: {format_size(report_size)}")
+    log_verbose(f"      Lines: {lines}")
+    log_verbose(f"      Citations: {report_md.count('[')}")
+
     state.report_markdown = report_md
     save_report(report_md, state.brief.company_name)
+    log_success(f"Markdown report saved ({format_size(report_size)}, {lines} lines)", indent=1)
 
     # Step 2: Generate structured JSON report
-    print("  → Generating structured JSON report...")
-    structured_report = (JSON_EXTRACTOR_PROMPT | json_llm).invoke({
-        "company_name": state.brief.company_name,
-        "markdown_report": report_md,
-    })
+    log_step(f"\n{Colors.WRITE} [2/2] Generating structured JSON report...", emoji="")
+
+    # Prepare JSON extractor prompt for logging
+    json_prompt_text = JSON_EXTRACTOR_PROMPT.format(
+        company_name=state.brief.company_name,
+        markdown_report=report_md[:800] + "..."  # Truncated for preview
+    )
+
+    with Timer("JSON Report Extraction"):
+        structured_report = (JSON_EXTRACTOR_PROMPT | json_llm).invoke({
+            "company_name": state.brief.company_name,
+            "markdown_report": report_md,
+        })
 
     # Add report date
     structured_report.report_date = datetime.now().strftime("%Y-%m-%d")
 
     # Convert to dict for storage
     report_json = structured_report.model_dump()
+
+    log_llm_call(
+        purpose="JSON Data Extraction",
+        prompt_preview=json_prompt_text,
+        response_preview=f"Company: {structured_report.company_name}, Sections: {len(report_json)}",
+        truncate=400
+    )
+
+    # Log JSON report statistics
+    json_size = len(str(report_json))
+    log_verbose(f"   JSON report statistics:")
+    log_verbose(f"      Size: {format_size(json_size)}")
+    log_verbose(f"      Key Decision Makers: {len(structured_report.key_decision_makers)}")
+    log_verbose(f"      Portfolio Companies: {len(structured_report.portfolio_companies)}")
+    log_verbose(f"      News Items: {len(structured_report.news_announcements)}")
+    log_verbose(f"      Sources: {len(structured_report.sources)}")
+
     state.report_json = report_json
     save_report_json(report_json, state.brief.company_name)
-    print("  ✓ JSON report generated")
+    log_success(f"JSON report saved ({format_size(json_size)})", indent=1)
+
+    print(f"\n✓ Report writing complete")
+    print("="*80 + "\n")
 
     return {
         "report_markdown": report_md,

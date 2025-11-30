@@ -189,10 +189,21 @@ def execute_sub_agent(
     reflection_llm = get_llm().with_structured_output(Reflection)
 
     # Build context from all pages
+    log_verbose(f"   Building context for {task.task_id}...")
     context = build_context(pages)
+    context_size = len(context)
+    log_verbose(f"      Context size: {format_size(context_size)} from {len(pages)} pages")
 
     # Step 1: Research - Sub-agent analyzes content
     print(f"  → Sub-agent working on: {task.task_id}")
+
+    # Prepare prompt preview for logging
+    research_prompt_text = SUB_AGENT_PROMPT.format(
+        question=task.question,
+        company_name=company_name,
+        context=context[:500] + "..."  # Truncated for preview
+    )
+
     research_response = (SUB_AGENT_PROMPT | llm).invoke({
         "question": task.question,
         "company_name": company_name,
@@ -201,14 +212,46 @@ def execute_sub_agent(
 
     findings = research_response.content
 
+    log_llm_call(
+        purpose=f"Sub-Agent Research: {task.task_id}",
+        prompt_preview=research_prompt_text,
+        response_preview=findings,
+        truncate=400
+    )
+
+    log_verbose(f"      Findings size: {format_size(len(findings))}")
+
     # Step 2: Reflection - Self-critique
     print(f"  → Sub-agent reflecting on: {task.task_id}")
     context_sample = context[:2000]  # Sample for reflection
+
+    reflection_prompt_text = REFLECTION_PROMPT.format(
+        question=task.question,
+        findings=findings[:500] + "...",
+        context_sample=context_sample[:300] + "..."
+    )
+
     reflection = (REFLECTION_PROMPT | reflection_llm).invoke({
         "question": task.question,
         "findings": findings,
         "context_sample": context_sample,
     })
+
+    log_llm_call(
+        purpose=f"Sub-Agent Reflection: {task.task_id}",
+        prompt_preview=reflection_prompt_text,
+        response_preview=f"Complete: {reflection.is_complete}, Confidence: {reflection.confidence}",
+        truncate=400
+    )
+
+    # Log reflection details
+    log_verbose(f"      Reflection assessment:")
+    log_verbose(f"         Is Complete: {reflection.is_complete}")
+    log_verbose(f"         Confidence: {reflection.confidence}")
+    if reflection.missing_aspects:
+        log_verbose(f"         Missing Aspects: {', '.join(reflection.missing_aspects[:3])}")
+    if reflection.next_steps:
+        log_verbose(f"         Next Steps: {reflection.next_steps[:100]}...")
 
     # Collect sources from pages
     sources = [p.url for p in pages]
