@@ -227,8 +227,17 @@ else:
 
             seed_urls_text = st.text_area(
                 "Seed URLs (one per line)",
-                value="https://www.wellington.com/en/capabilities/private-investing\nhttps://www.wellington.com/en/capabilities/private-investing/our-team",
-                height=150,
+                value="""https://www.wellington.com/en/capabilities/private-investing
+https://www.wellington.com/en/capabilities/private-investing/our-team
+https://www.wellington.com/en/capabilities/private-investing/early-stage-venture
+https://www.wellington.com/en/capabilities/private-investing/climate-growth
+https://www.wellington.com/en/capabilities/private-investing/late-stage-biotechnology#accordion-e6d946989a-item-d2db1cee14
+https://www.wellington.com/en/capabilities/private-investing/late-stage-biotechnology/case-study
+https://www.wellington.com/en/capabilities/private-investing/late-stage-growth
+https://www.wellington.com/en/capabilities/private-investing/late-stage-growth/case-study
+https://www.wellington.com/en/capabilities/private-investing/private-credit
+https://www.wellington.com/en/capabilities/private-investing/value-creation""",
+                height=200,
                 help="Provide seed URLs - research will be limited to these URLs and their domains"
             )
 
