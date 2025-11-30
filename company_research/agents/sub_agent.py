@@ -191,12 +191,14 @@ Your previous findings (truncated):
 IDENTIFIED GAP TO ADDRESS:
 {gap_to_address}
 
+{targeted_snippets_section}
+
 Complete context from all available sources:
 {context}
 
 REFINEMENT TASK:
 1. Review your previous findings above
-2. Focus SPECIFICALLY on the identified gap
+2. {mcp_instruction}
 3. Search through the context for ONLY the missing information
 4. Extract precise details that address the gap
 5. Use inline citations [1], [2] for new findings
@@ -257,6 +259,24 @@ def execute_sub_agent(
         print(f"  → Sub-agent REFINING: {task.task_id}")
         log_verbose(f"      Mode: Targeted refinement (second-pass)")
 
+        # V2.8: Build MCP snippets section
+        if task.targeted_snippets:
+            targeted_snippets_section = f"""
+=== TARGETED SNIPPETS (MCP Intelligent Search) ===
+
+The following snippets were extracted using pattern matching (patterns: {', '.join(task.search_patterns_used)}).
+These are the MOST LIKELY locations of the missing information.
+
+{task.targeted_snippets}
+
+=== END TARGETED SNIPPETS ===
+"""
+            mcp_instruction = "START with the targeted snippets above - they contain patterns matching your gap"
+            log_verbose(f"      Using {len(task.targeted_snippets)} chars of MCP-targeted snippets")
+        else:
+            targeted_snippets_section = ""
+            mcp_instruction = "Focus SPECIFICALLY on the identified gap"
+
         # Use refinement prompt
         question_text = original_question if original_question else task.question
         research_prompt_text = REFINEMENT_PROMPT.format(
@@ -264,6 +284,8 @@ def execute_sub_agent(
             company_name=company_name,
             previous_findings=task.previous_findings,
             gap_to_address=task.gap_to_address,
+            targeted_snippets_section=targeted_snippets_section,
+            mcp_instruction=mcp_instruction,
             context=context[:500] + "..."
         )
 
@@ -272,6 +294,8 @@ def execute_sub_agent(
             "company_name": company_name,
             "previous_findings": task.previous_findings,
             "gap_to_address": task.gap_to_address,
+            "targeted_snippets_section": targeted_snippets_section,
+            "mcp_instruction": mcp_instruction,
             "context": context,
         })
     else:

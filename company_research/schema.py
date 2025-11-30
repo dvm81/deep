@@ -84,6 +84,10 @@ class SubAgentTask(BaseModel):
     previous_findings: Optional[str] = None  # Findings from previous iteration
     gap_to_address: Optional[str] = None     # Specific gap to focus on
 
+    # V2.8: MCP intelligent search
+    targeted_snippets: Optional[str] = None  # Focused excerpts from MCP search
+    search_patterns_used: List[str] = Field(default_factory=list)  # Patterns that found matches
+
 
 class SubAgentResult(BaseModel):
     """Result from a sub-agent's research."""

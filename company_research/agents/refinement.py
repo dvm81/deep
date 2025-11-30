@@ -2,12 +2,14 @@
 
 from typing import Dict, Any, List
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 from ..schema import ResearchState, SubAgentTask, SubAgentResult
 from ..scraping import CompanyScraper
 from .sub_agent import execute_sub_agent
+from ..mcp_search import execute_mcp_search
 from ..logger import (
     log_phase, log_step, log_llm_call, log_verbose, log_success,
-    log_warning, log_metric, Colors, Timer
+    log_warning, log_metric, Colors, Timer, format_size
 )
 
 
@@ -40,17 +42,19 @@ def should_refine_task(result: SubAgentResult) -> bool:
 def create_refinement_task(
     original_result: SubAgentResult,
     pages_list: List,
-    company_name: str
+    company_name: str,
+    original_question: str
 ) -> SubAgentTask:
-    """Create a targeted refinement task based on gaps.
+    """Create a targeted refinement task based on gaps with MCP search.
 
     Args:
         original_result: Original sub-agent result with reflection
         pages_list: List of available page content
         company_name: Company being researched
+        original_question: Original research question text
 
     Returns:
-        Refined SubAgentTask with focused instructions
+        Refined SubAgentTask with focused instructions and MCP snippets
     """
     reflection = original_result.reflection
 
@@ -61,6 +65,20 @@ def create_refinement_task(
     if reflection.next_steps:
         gap_description += f"\nSuggested next steps: {reflection.next_steps[:200]}"
 
+    # V2.8: Execute MCP search to find targeted snippets
+    log_verbose(f"   Executing MCP search for {original_result.task_id}...")
+    targeted_snippets, patterns_used = execute_mcp_search(
+        gap_description=gap_description,
+        question=original_question
+    )
+
+    # Log MCP search results
+    if targeted_snippets:
+        log_verbose(f"      MCP found {len(targeted_snippets)} chars using patterns: {', '.join(patterns_used)}")
+        log_verbose(f"      Snippet size: {format_size(len(targeted_snippets))}")
+    else:
+        log_verbose(f"      MCP found no targeted snippets (will use full context)")
+
     # Create targeted refinement task
     refined_task = SubAgentTask(
         task_id=f"{original_result.task_id}_refinement",
@@ -68,7 +86,9 @@ def create_refinement_task(
         context_urls=[p.url for p in pages_list],
         is_refinement=True,
         previous_findings=original_result.findings[:1000] + "...",  # Truncated preview
-        gap_to_address=gap_description
+        gap_to_address=gap_description,
+        targeted_snippets=targeted_snippets if targeted_snippets else None,  # V2.8
+        search_patterns_used=patterns_used  # V2.8
     )
 
     return refined_task
@@ -142,8 +162,13 @@ def refinement_node(state: ResearchState) -> Dict[str, Any]:
         original_question_idx = int(task_id.split('_')[1])  # Extract index from "q_0", "q_1", etc.
         original_question = state.brief.sub_questions[original_question_idx]
 
-        # Create refinement task
-        ref_task = create_refinement_task(original_result, pages_list, state.brief.company_name)
+        # Create refinement task with MCP search
+        ref_task = create_refinement_task(
+            original_result,
+            pages_list,
+            state.brief.company_name,
+            original_question  # V2.8: Pass for MCP search
+        )
         refinement_tasks.append(ref_task)
         original_questions[ref_task.task_id] = original_question
 
@@ -151,6 +176,8 @@ def refinement_node(state: ResearchState) -> Dict[str, Any]:
         short_gap = ref_task.gap_to_address[:80] + "..." if len(ref_task.gap_to_address) > 80 else ref_task.gap_to_address
         print(f"   {Colors.DIM}Refinement for {task_id}:{Colors.RESET}")
         print(f"      {Colors.DIM}Gap: {short_gap}{Colors.RESET}")
+        if ref_task.search_patterns_used:
+            print(f"      {Colors.DIM}MCP Patterns: {', '.join(ref_task.search_patterns_used)}{Colors.RESET}")
         if len(ref_task.gap_to_address) > 80:
             log_verbose(f"         Full gap: {ref_task.gap_to_address}")
 
