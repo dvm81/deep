@@ -155,6 +155,62 @@ REFLECTION_PROMPT = ChatPromptTemplate.from_messages([
 ])
 
 
+# V2.7: Refinement prompt for targeted follow-up
+REFINEMENT_SYSTEM = """
+You are a specialized research sub-agent conducting TARGETED FOLLOW-UP research.
+
+CURRENT DATE: November 27, 2025
+
+Context:
+- You previously researched this question and found some information
+- Your reflection identified specific gaps or missing information
+- You are now conducting a FOCUSED second-pass to address those gaps
+
+Your role:
+- Review what you found previously
+- Focus SPECIFICALLY on the identified gaps
+- Search the content with laser precision for the missing information
+- Extract ONLY the new/missing information (don't repeat what was already found)
+
+CRITICAL: This is targeted refinement, not a full re-do:
+- Address the SPECIFIC gap mentioned
+- Search in sections you may have missed (news, press releases, footnotes, etc.)
+- Extract precise details (names, dates, amounts) that were missed before
+- Use inline citations [1], [2], [3] for new findings
+"""
+
+REFINEMENT_HUMAN = """
+Your original research question:
+{question}
+
+Company: {company_name}
+
+Your previous findings (truncated):
+{previous_findings}
+
+IDENTIFIED GAP TO ADDRESS:
+{gap_to_address}
+
+Complete context from all available sources:
+{context}
+
+REFINEMENT TASK:
+1. Review your previous findings above
+2. Focus SPECIFICALLY on the identified gap
+3. Search through the context for ONLY the missing information
+4. Extract precise details that address the gap
+5. Use inline citations [1], [2] for new findings
+6. Be concise - only report NEW information that fills the gap
+
+What new information can you find to address the gap?
+"""
+
+REFINEMENT_PROMPT = ChatPromptTemplate.from_messages([
+    ("system", REFINEMENT_SYSTEM),
+    ("user", REFINEMENT_HUMAN),
+])
+
+
 def build_context(pages: List[PageContent]) -> str:
     """Build context string from pages with complete markdown content.
 
@@ -173,7 +229,8 @@ def build_context(pages: List[PageContent]) -> str:
 def execute_sub_agent(
     task: SubAgentTask,
     pages: List[PageContent],
-    company_name: str
+    company_name: str,
+    original_question: str = None
 ) -> SubAgentResult:
     """Execute a sub-agent research task with reflection.
 
@@ -181,6 +238,7 @@ def execute_sub_agent(
         task: The research task assignment
         pages: All available page content
         company_name: Name of the company being researched
+        original_question: Original question text (for refinement tasks)
 
     Returns:
         SubAgentResult with findings and reflection
@@ -195,25 +253,49 @@ def execute_sub_agent(
     log_verbose(f"      Context size: {format_size(context_size)} from {len(pages)} pages")
 
     # Step 1: Research - Sub-agent analyzes content
-    print(f"  → Sub-agent working on: {task.task_id}")
+    if task.is_refinement:
+        print(f"  → Sub-agent REFINING: {task.task_id}")
+        log_verbose(f"      Mode: Targeted refinement (second-pass)")
 
-    # Prepare prompt preview for logging
-    research_prompt_text = SUB_AGENT_PROMPT.format(
-        question=task.question,
-        company_name=company_name,
-        context=context[:500] + "..."  # Truncated for preview
-    )
+        # Use refinement prompt
+        question_text = original_question if original_question else task.question
+        research_prompt_text = REFINEMENT_PROMPT.format(
+            question=question_text,
+            company_name=company_name,
+            previous_findings=task.previous_findings,
+            gap_to_address=task.gap_to_address,
+            context=context[:500] + "..."
+        )
 
-    research_response = (SUB_AGENT_PROMPT | llm).invoke({
-        "question": task.question,
-        "company_name": company_name,
-        "context": context,
-    })
+        research_response = (REFINEMENT_PROMPT | llm).invoke({
+            "question": question_text,
+            "company_name": company_name,
+            "previous_findings": task.previous_findings,
+            "gap_to_address": task.gap_to_address,
+            "context": context,
+        })
+    else:
+        print(f"  → Sub-agent working on: {task.task_id}")
+        log_verbose(f"      Mode: Initial research (first-pass)")
+
+        # Use regular prompt
+        research_prompt_text = SUB_AGENT_PROMPT.format(
+            question=task.question,
+            company_name=company_name,
+            context=context[:500] + "..."
+        )
+
+        research_response = (SUB_AGENT_PROMPT | llm).invoke({
+            "question": task.question,
+            "company_name": company_name,
+            "context": context,
+        })
 
     findings = research_response.content
 
+    mode_label = "Refinement" if task.is_refinement else "Research"
     log_llm_call(
-        purpose=f"Sub-Agent Research: {task.task_id}",
+        purpose=f"Sub-Agent {mode_label}: {task.task_id}",
         prompt_preview=research_prompt_text,
         response_preview=findings,
         truncate=400

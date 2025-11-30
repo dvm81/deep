@@ -79,6 +79,11 @@ class SubAgentTask(BaseModel):
     question: str                      # The specific research question
     context_urls: List[HttpUrl]        # URLs this agent should focus on
 
+    # V2.7: Refinement support
+    is_refinement: bool = False        # Whether this is a refinement task
+    previous_findings: Optional[str] = None  # Findings from previous iteration
+    gap_to_address: Optional[str] = None     # Specific gap to focus on
+
 
 class SubAgentResult(BaseModel):
     """Result from a sub-agent's research."""
@@ -115,6 +120,9 @@ class ResearchState(BaseModel):
     # V2.0: Supervisor coordination
     sub_agent_results: Dict[str, SubAgentResult] = {}  # key = task_id
     supervisor_review: Optional[SupervisorReview] = None
+
+    # V2.7: Iterative refinement
+    refinement_iteration: int = 0      # Track refinement iterations (max 1)
 
     report_markdown: Optional[str] = None
     report_json: Optional[Dict] = None

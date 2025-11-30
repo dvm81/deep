@@ -40,6 +40,8 @@ Company: {company_name}
 Research brief:
 {research_brief}
 
+Current refinement iteration: {refinement_iteration} (max 1 allowed)
+
 Sub-agent findings summary:
 {findings_summary}
 
@@ -50,7 +52,17 @@ REVIEW TASK:
 1. Assess overall completeness of the research
 2. Identify any gaps or missing information across all findings
 3. Determine if findings are ready for report generation
-4. Decide if refinement iteration is needed (set to false for now - we'll add iterative refinement later)
+4. Decide if ONE refinement iteration is needed:
+   - Set refinement_needed = True IF:
+     * We are at iteration 0 (not yet refined)
+     * Multiple sub-agents report medium/low confidence
+     * Gaps could plausibly be filled by re-analyzing the same pages with focused questions
+     * The missing info is likely on the company website (not external databases)
+   - Set refinement_needed = False IF:
+     * We are at iteration 1 (already refined once)
+     * Confidence is already high across most sub-agents
+     * Gaps are due to info not being disclosed (can't be found)
+     * Missing info requires external data sources
 
 Provide your assessment.
 """
@@ -191,6 +203,7 @@ def supervisor_node(state: ResearchState) -> Dict[str, Any]:
     review_prompt_text = SUPERVISOR_REVIEW_PROMPT.format(
         company_name=state.brief.company_name,
         research_brief=state.brief.main_question,
+        refinement_iteration=state.refinement_iteration,
         findings_summary=findings_summary[:500] + "...",
         reflections=reflections[:500] + "..."
     )
@@ -199,6 +212,7 @@ def supervisor_node(state: ResearchState) -> Dict[str, Any]:
         supervisor_review = (SUPERVISOR_REVIEW_PROMPT | review_llm).invoke({
             "company_name": state.brief.company_name,
             "research_brief": state.brief.main_question,
+            "refinement_iteration": state.refinement_iteration,
             "findings_summary": findings_summary,
             "reflections": reflections,
         })
@@ -214,10 +228,17 @@ def supervisor_node(state: ResearchState) -> Dict[str, Any]:
     print(f"\n   {Colors.BOLD}Supervisor Assessment:{Colors.RESET}")
     log_metric("Completeness", supervisor_review.overall_completeness, "", indent=1)
     log_metric("Ready for Writing", supervisor_review.ready_for_writing, "", indent=1)
+    log_metric("Refinement Needed", supervisor_review.refinement_needed, "", indent=1)
 
     if supervisor_review.gaps_identified:
         log_metric("Gaps Identified", len(supervisor_review.gaps_identified), "gaps", indent=1)
         log_verbose(f"      Gaps: {', '.join(supervisor_review.gaps_identified[:3])}")
+
+    # Show refinement decision reasoning
+    if state.refinement_iteration == 0 and supervisor_review.refinement_needed:
+        print(f"   {Colors.YELLOW}→ Supervisor recommends ONE refinement iteration to fill gaps{Colors.RESET}")
+    elif state.refinement_iteration >= 1:
+        print(f"   {Colors.DIM}→ Already refined (iteration={state.refinement_iteration}), proceeding to write{Colors.RESET}")
 
     # Step 5: Convert sub-agent results to notes for the writer
     notes = {}

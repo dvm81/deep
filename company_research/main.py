@@ -43,7 +43,7 @@ def main(config_path: str = "config.json", verbose: bool = False):
     logger.set_verbose(verbose)
 
     # Display banner
-    log_header(f"{Colors.ROCKET} COMPANY PRIVATE INVESTING RESEARCH AGENT V2.5", level=1)
+    log_header(f"{Colors.ROCKET} COMPANY PRIVATE INVESTING RESEARCH AGENT V2.7", level=1)
 
     # Load configuration
     log_step(f"{Colors.CONFIG} Configuration Loading", emoji="")
@@ -80,7 +80,8 @@ def main(config_path: str = "config.json", verbose: bool = False):
         print(f"\n{Colors.THINKING} {Colors.BOLD}Research Strategy:{Colors.RESET}")
         log_tree([
             "Phase 1: SCOPE (Planning)",
-            "Phase 2: RESEARCH (Supervisor + 6 Sub-Agents)",
+            "Phase 2: RESEARCH (Supervisor + 6 Sub-Agents with Reflection)",
+            "Phase 2.5: REFINEMENT (Targeted Follow-Up - if needed)",
             "Phase 3: WRITE (Markdown + JSON Reports)"
         ])
 
@@ -131,7 +132,7 @@ def main(config_path: str = "config.json", verbose: bool = False):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Company Private Investing Research Agent V2.5",
+        description="Company Private Investing Research Agent V2.7",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
