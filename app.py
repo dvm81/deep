@@ -18,7 +18,7 @@ from company_research.logger import format_size
 
 # Page configuration
 st.set_page_config(
-    page_title="Company Research Agent V2.8",
+    page_title="Company Research Agent V2.9",
     page_icon="🔍",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -122,7 +122,7 @@ def run_research(company_name, research_question, seed_urls, verbose=True):
 
 # Header
 st.title("🔍 Company Private Investing Research Agent")
-st.caption("V2.8 - Powered by Multi-Agent System with MCP Intelligent Search")
+st.caption("V2.9 - Powered by Multi-Agent System with Enhanced Quality Optimization")
 
 st.markdown("---")
 
@@ -401,4 +401,4 @@ https://www.wellington.com/en/capabilities/private-investing/value-creation""",
 
 # Footer
 st.markdown("---")
-st.caption("Company Private Investing Research Agent V2.8 | Multi-Agent System with MCP Intelligent Search")
+st.caption("Company Private Investing Research Agent V2.9 | Multi-Agent System with Enhanced Quality Optimization")

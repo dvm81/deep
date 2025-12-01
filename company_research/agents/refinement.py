@@ -182,13 +182,14 @@ def refinement_node(state: ResearchState) -> Dict[str, Any]:
             log_verbose(f"         Full gap: {ref_task.gap_to_address}")
 
     # Step 3: Execute refinement tasks in parallel
+    # V2.9: Increased from 2 to 3 workers for faster refinement
     log_step(f"\n{Colors.ROBOT} [3/3] Executing {len(refinement_tasks)} refinement tasks in parallel...", emoji="")
-    log_verbose(f"   ThreadPoolExecutor configured with max_workers=2 (refinement)")
+    log_verbose(f"   ThreadPoolExecutor configured with max_workers=3 (refinement)")
 
     refined_results = {}
 
     with Timer("Refinement Execution") as refinement_timer:
-        with ThreadPoolExecutor(max_workers=2) as executor:
+        with ThreadPoolExecutor(max_workers=3) as executor:
             # Submit refinement tasks
             future_to_task = {
                 executor.submit(

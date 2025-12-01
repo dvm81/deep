@@ -43,7 +43,7 @@ def main(config_path: str = "config.json", verbose: bool = False):
     logger.set_verbose(verbose)
 
     # Display banner
-    log_header(f"{Colors.ROCKET} COMPANY PRIVATE INVESTING RESEARCH AGENT V2.8", level=1)
+    log_header(f"{Colors.ROCKET} COMPANY PRIVATE INVESTING RESEARCH AGENT V2.9", level=1)
 
     # Load configuration
     log_step(f"{Colors.CONFIG} Configuration Loading", emoji="")

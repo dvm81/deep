@@ -26,30 +26,97 @@ class SearchSnippet:
 
 
 # Predefined search patterns for common gaps
+# V2.9: Expanded from 5 to 16 patterns for maximum extraction quality
 SEARCH_PATTERNS = {
+    # ===== NEWS & DATES (5 patterns) =====
     "news_dates": SearchPattern(
         name="news_dates",
         regex=r"\d{4}-\d{2}-\d{2}|(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},\s+\d{4}",
         context_lines=5
     ),
+    "quarter_dates": SearchPattern(
+        name="quarter_dates",
+        regex=r"Q[1-4]\s+\d{4}|(?:first|second|third|fourth)\s+quarter\s+(?:of\s+)?\d{4}",
+        context_lines=4
+    ),
+    "month_year_dates": SearchPattern(
+        name="month_year_dates",
+        regex=r"(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}",
+        context_lines=4
+    ),
+
+    # ===== COMPANIES & PORTFOLIO (3 patterns) =====
     "company_names": SearchPattern(
         name="company_names",
         regex=r"[A-Z][a-z]+(?:\s[A-Z][a-z]+)*(?:\sInc\.|\sLLC|\sLtd\.|\sCorp\.)?",
         context_lines=3
     ),
-    "dollar_amounts": SearchPattern(
-        name="dollar_amounts",
-        regex=r"\$\d+(?:\.\d+)?(?:M|B|million|billion|\s+million|\s+billion)",
+    "private_entities": SearchPattern(
+        name="private_entities",
+        regex=r"[A-Z][a-z]+(?:\s[A-Z][a-z]+)*\s+(?:LP|GP|Holdings?|Partners?|Group|Management|Advisors?)",
         context_lines=3
     ),
+    "sector_keywords": SearchPattern(
+        name="sector_keywords",
+        regex=r"\b(?:biotech(?:nology)?|fintech|healthtech|climate tech|clean tech|SaaS|enterprise software|consumer|B2B|B2C|healthcare|financial services|real estate|infrastructure)\b",
+        context_lines=3
+    ),
+
+    # ===== PEOPLE & LEADERSHIP (4 patterns) =====
     "people_with_titles": SearchPattern(
         name="people_with_titles",
-        regex=r"[A-Z][a-z]+\s[A-Z][a-z]+,?\s+(?:CEO|CTO|CFO|Partner|Managing Director|Director|Vice President|VP|Head of)",
+        regex=r"[A-Z][a-z]+\s[A-Z][a-z]+,?\s+(?:CEO|CTO|CFO|COO|Partner|Managing Director|Director|Vice President|VP|Head of|Chief)",
         context_lines=2
+    ),
+    "academic_titles": SearchPattern(
+        name="academic_titles",
+        regex=r"[A-Z][a-z]+\s[A-Z][a-z]+,?\s+(?:PhD|MD|MBA|JD|CFA|M\.D\.|Ph\.D\.)",
+        context_lines=2
+    ),
+    "board_roles": SearchPattern(
+        name="board_roles",
+        regex=r"[A-Z][a-z]+\s[A-Z][a-z]+,?\s+(?:Board Member|Trustee|Advisory Board|Board of Directors|Independent Director|Non-Executive Director)",
+        context_lines=2
+    ),
+    "senior_titles": SearchPattern(
+        name="senior_titles",
+        regex=r"\b(?:Senior|Principal|Executive|General)\s+(?:Partner|Director|Manager|Vice President|Advisor)\b",
+        context_lines=2
+    ),
+
+    # ===== FINANCIAL METRICS (3 patterns) =====
+    "dollar_amounts": SearchPattern(
+        name="dollar_amounts",
+        regex=r"\$\d+(?:\.\d+)?(?:M|B|bn|mn|million|billion|\s+million|\s+billion)",
+        context_lines=3
+    ),
+    "percentages": SearchPattern(
+        name="percentages",
+        regex=r"\d+(?:\.\d+)?%(?:\s+(?:stake|ownership|equity|interest|return|growth|increase))?",
+        context_lines=3
+    ),
+    "employee_counts": SearchPattern(
+        name="employee_counts",
+        regex=r"\d+\+?\s+(?:employees?|people|team members?|professionals?)",
+        context_lines=2
+    ),
+
+    # ===== GEOGRAPHY (1 pattern) =====
+    "geography": SearchPattern(
+        name="geography",
+        regex=r"\b(?:APAC|EMEA|North America|Europe|Asia|Latin America|Middle East|Africa|US|UK|China|India|San Francisco|New York|Boston|London|Singapore)\b",
+        context_lines=2
+    ),
+
+    # ===== INVESTMENT TERMS (2 patterns) =====
+    "investment_rounds": SearchPattern(
+        name="investment_rounds",
+        regex=r"\b(?:Seed|Series\s+[A-F]|Pre-seed|Growth\s+(?:round|equity)|Late\s+stage|Early\s+stage)\b",
+        context_lines=3
     ),
     "fund_names": SearchPattern(
         name="fund_names",
-        regex=r"(?:[A-Z][a-z]+\s)*(?:Fund|Venture|Capital|Growth|Stage|Portfolio)",
+        regex=r"(?:[A-Z][a-z]+\s)*(?:Fund|Venture|Capital|Growth|Stage|Portfolio|Strategy)",
         context_lines=3
     ),
 }
@@ -57,6 +124,8 @@ SEARCH_PATTERNS = {
 
 def generate_search_patterns(gap_description: str, question: str) -> List[SearchPattern]:
     """Generate relevant search patterns based on reflection gap.
+
+    V2.9: Enhanced with 16 patterns for comprehensive extraction
 
     Args:
         gap_description: Description of what's missing from reflection
@@ -69,28 +138,59 @@ def generate_search_patterns(gap_description: str, question: str) -> List[Search
     gap_lower = gap_description.lower()
     question_lower = question.lower()
 
-    # News/announcements gaps
+    # ===== NEWS & DATES =====
     if any(word in gap_lower for word in ["news", "announcement", "press release", "date"]):
         patterns.append(SEARCH_PATTERNS["news_dates"])
+        patterns.append(SEARCH_PATTERNS["quarter_dates"])
+        patterns.append(SEARCH_PATTERNS["month_year_dates"])
 
-    # Company/portfolio gaps
-    if any(word in gap_lower or word in question_lower for word in ["company", "companies", "portfolio", "investment"]):
+    # ===== COMPANIES & PORTFOLIO =====
+    if any(word in gap_lower or word in question_lower for word in ["company", "companies", "portfolio", "investment", "firm"]):
         patterns.append(SEARCH_PATTERNS["company_names"])
+        patterns.append(SEARCH_PATTERNS["private_entities"])
+        patterns.append(SEARCH_PATTERNS["sector_keywords"])
 
-    # Financial gaps
-    if any(word in gap_lower for word in ["amount", "aum", "assets", "fund size", "investment"]):
+    # ===== PEOPLE & LEADERSHIP =====
+    if any(word in gap_lower or word in question_lower for word in ["team", "leadership", "decision maker", "people", "member", "executive", "board"]):
+        patterns.append(SEARCH_PATTERNS["people_with_titles"])
+        patterns.append(SEARCH_PATTERNS["academic_titles"])
+        patterns.append(SEARCH_PATTERNS["board_roles"])
+        patterns.append(SEARCH_PATTERNS["senior_titles"])
+
+    # ===== FINANCIAL METRICS =====
+    if any(word in gap_lower for word in ["amount", "aum", "assets", "fund size", "capital", "investment", "valuation", "stake", "ownership"]):
         patterns.append(SEARCH_PATTERNS["dollar_amounts"])
+        patterns.append(SEARCH_PATTERNS["percentages"])
         patterns.append(SEARCH_PATTERNS["fund_names"])
 
-    # People/team gaps
-    if any(word in gap_lower or word in question_lower for word in ["team", "leadership", "decision maker", "people", "member"]):
-        patterns.append(SEARCH_PATTERNS["people_with_titles"])
+    # ===== GEOGRAPHY =====
+    if any(word in gap_lower or word in question_lower for word in ["region", "geographic", "location", "country", "market"]):
+        patterns.append(SEARCH_PATTERNS["geography"])
 
-    # Default: if no patterns matched, use news dates (most common gap)
+    # ===== INVESTMENT TERMS =====
+    if any(word in gap_lower or word in question_lower for word in ["round", "series", "stage", "strategy", "fund"]):
+        patterns.append(SEARCH_PATTERNS["investment_rounds"])
+        patterns.append(SEARCH_PATTERNS["fund_names"])
+
+    # ===== METRICS & SCALE =====
+    if any(word in gap_lower for word in ["employee", "team size", "headcount", "scale"]):
+        patterns.append(SEARCH_PATTERNS["employee_counts"])
+
+    # Default: if no patterns matched, use comprehensive news search (most common gap)
     if not patterns:
         patterns.append(SEARCH_PATTERNS["news_dates"])
+        patterns.append(SEARCH_PATTERNS["quarter_dates"])
+        patterns.append(SEARCH_PATTERNS["company_names"])
 
-    return patterns
+    # Remove duplicates while preserving order
+    seen = set()
+    unique_patterns = []
+    for p in patterns:
+        if p.name not in seen:
+            seen.add(p.name)
+            unique_patterns.append(p)
+
+    return unique_patterns
 
 
 def search_file_with_pattern(

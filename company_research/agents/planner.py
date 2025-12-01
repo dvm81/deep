@@ -3,7 +3,7 @@
 from typing import Dict, Any
 from langchain_core.prompts import ChatPromptTemplate
 from ..config import get_llm
-from ..schema import ClarifyWithUser, ResearchState, ResearchQuestion
+from ..schema import ClarifyWithUser, ResearchState, ResearchQuestion, AdaptiveQuestions
 from ..logger import (
     log_phase, log_step, log_llm_call, log_verbose, log_tree,
     log_success, Colors, Timer
@@ -57,6 +57,38 @@ BRIEF_PROMPT = ChatPromptTemplate.from_messages([
         "User request:\n{request}\n\n"
         "Assume any follow-up questions have already been resolved. "
         "Produce a single research_brief that the research system should focus on."
+    ),
+])
+
+
+# V2.9: Adaptive questions generator
+adaptive_model = get_llm().with_structured_output(AdaptiveQuestions)
+
+ADAPTIVE_PROMPT = ChatPromptTemplate.from_messages([
+    (
+        "system",
+        "You are a research strategist generating ADAPTIVE sub-questions.\n\n"
+        "CURRENT DATE: November 27, 2025\n\n"
+        "Context: A research system already has 6 CORE questions covering:\n"
+        "1. Key decision makers/leadership\n"
+        "2. Regions and sectors\n"
+        "3. AUM/metrics\n"
+        "4. Strategies/funds\n"
+        "5. Portfolio companies\n"
+        "6. News/announcements\n\n"
+        "Your job: Generate 2-3 ADDITIONAL adaptive questions based on the specific user request.\n\n"
+        "Guidelines:\n"
+        "- Focus on aspects NOT covered by the 6 core questions\n"
+        "- Look for specific keywords in the request (ESG, returns, LP relations, value creation, etc.)\n"
+        "- Make questions specific and actionable\n"
+        "- Each question should target extraction of concrete details\n"
+        "- Keep questions focused on private markets/investing context"
+    ),
+    (
+        "user",
+        "Company: {company_name}\n"
+        "User Request:\n{request}\n\n"
+        "Generate 2-3 adaptive sub-questions that complement the 6 core questions."
     ),
 ])
 
@@ -123,8 +155,8 @@ def planning_node(state: ResearchState) -> Dict[str, Any]:
 
     state.brief.main_question = rq.research_brief
 
-    # Sub-questions – generic private-markets prompts
-    state.brief.sub_questions = [
+    # Sub-questions – 6 CORE generic private-markets prompts
+    core_questions = [
         f"Identify all key decision makers and leadership roles in {state.brief.company_name}'s private investing / private markets activities.",
         f"Describe the regions and sectors in which {state.brief.company_name} is active in private markets.",
         f"Summarize any disclosed assets under management (AUM) or platform-level metrics for {state.brief.company_name}'s private markets business.",
@@ -133,12 +165,39 @@ def planning_node(state: ResearchState) -> Dict[str, Any]:
         f"Extract EVERY single news item and announcement related to {state.brief.company_name}'s private markets activities. Include ALL fund closures, ALL portfolio company acquisitions/exits, ALL leadership appointments, ALL partnerships, ALL awards/recognitions, ALL press releases, and ALL other news items. Do not summarize - list each news item individually with its date and details.",
     ]
 
-    # Display generated sub-questions
+    # V2.9: Generate 2-3 ADAPTIVE questions based on request
+    log_step(f"\n{Colors.TARGET} Generating adaptive sub-questions...", emoji="")
+    with Timer("Adaptive questions generation"):
+        adaptive_result = (ADAPTIVE_PROMPT | adaptive_model).invoke({
+            "request": request,
+            "company_name": state.brief.company_name,
+        })
+
+    adaptive_prompt_text = ADAPTIVE_PROMPT.format(
+        request=request,
+        company_name=state.brief.company_name
+    )
+    log_llm_call(
+        purpose="Adaptive Questions Generation",
+        prompt_preview=adaptive_prompt_text,
+        response_preview=f"{len(adaptive_result.questions)} adaptive questions",
+        truncate=400
+    )
+
+    # Combine: 6 core + 2-3 adaptive = 8-9 total
+    state.brief.sub_questions = core_questions + adaptive_result.questions
+
+    # Display all sub-questions
     print(f"\n   {Colors.BOLD}Generated {len(state.brief.sub_questions)} Sub-Questions:{Colors.RESET}")
+    print(f"      {Colors.DIM}(6 core + {len(adaptive_result.questions)} adaptive){Colors.RESET}")
     for idx, q in enumerate(state.brief.sub_questions, 1):
+        # Mark adaptive questions
+        is_adaptive = idx > 6
+        marker = f"{Colors.YELLOW}[ADAPTIVE]{Colors.RESET} " if is_adaptive else ""
+
         # Shorten for display
         short_q = q[:80] + "..." if len(q) > 80 else q
-        print(f"      {Colors.DIM}{idx}. {short_q}{Colors.RESET}")
+        print(f"      {Colors.DIM}{idx}. {marker}{short_q}{Colors.RESET}")
         # Full question in verbose mode
         if len(q) > 80:
             log_verbose(f"         Full: {q}", indent=0)

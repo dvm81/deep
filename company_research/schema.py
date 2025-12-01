@@ -28,6 +28,13 @@ class ResearchQuestion(BaseModel):
     )
 
 
+class AdaptiveQuestions(BaseModel):
+    """V2.9: Adaptive questions generated based on request specifics."""
+    questions: List[str] = Field(
+        description="List of 2-3 adaptive sub-questions tailored to the specific research request"
+    )
+
+
 # Research-state models
 class ResearchBrief(BaseModel):
     """Configuration and scope for the research project."""

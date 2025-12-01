@@ -40,7 +40,7 @@ Company: {company_name}
 Research brief:
 {research_brief}
 
-Current refinement iteration: {refinement_iteration} (max 1 allowed)
+Current refinement iteration: {refinement_iteration} (max 2 allowed)
 
 Sub-agent findings summary:
 {findings_summary}
@@ -52,14 +52,14 @@ REVIEW TASK:
 1. Assess overall completeness of the research
 2. Identify any gaps or missing information across all findings
 3. Determine if findings are ready for report generation
-4. Decide if ONE refinement iteration is needed:
+4. Decide if refinement iteration is needed (up to 2 iterations):
    - Set refinement_needed = True IF:
-     * We are at iteration 0 (not yet refined)
+     * We are at iteration 0 or 1 (can still refine)
      * Multiple sub-agents report medium/low confidence
      * Gaps could plausibly be filled by re-analyzing the same pages with focused questions
      * The missing info is likely on the company website (not external databases)
    - Set refinement_needed = False IF:
-     * We are at iteration 1 (already refined once)
+     * We are at iteration 2 (already refined twice - maximum reached)
      * Confidence is already high across most sub-agents
      * Gaps are due to info not being disclosed (can't be found)
      * Missing info requires external data sources
@@ -145,12 +145,13 @@ def supervisor_node(state: ResearchState) -> Dict[str, Any]:
         log_verbose(f"      Context: {len(pages_list)} pages, {format_size(total_size)}")
 
     # Step 3: Execute sub-agents in parallel
-    log_step(f"\n{Colors.ROBOT} [3/4] Executing {len(tasks)} sub-agents in parallel (3 workers)...", emoji="")
-    log_verbose(f"   ThreadPoolExecutor configured with max_workers=3")
+    # V2.9: Increased from 3 to 5 workers for faster execution
+    log_step(f"\n{Colors.ROBOT} [3/4] Executing {len(tasks)} sub-agents in parallel (5 workers)...", emoji="")
+    log_verbose(f"   ThreadPoolExecutor configured with max_workers=5")
     results = {}
 
     with Timer("Parallel Sub-Agent Execution") as parallel_timer:
-        with ThreadPoolExecutor(max_workers=3) as executor:
+        with ThreadPoolExecutor(max_workers=5) as executor:
             # Submit all sub-agent tasks
             future_to_task = {
                 executor.submit(execute_sub_agent, task, pages_list, state.brief.company_name): task

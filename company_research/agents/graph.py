@@ -90,9 +90,10 @@ def should_refine(graph_state: GraphState) -> str:
     state = graph_state["state"]
 
     # Check if refinement is needed
+    # V2.9: Increased max refinement iterations from 1 to 2 for deeper quality
     if (state.supervisor_review and
         state.supervisor_review.refinement_needed and
-        state.refinement_iteration < 1):
+        state.refinement_iteration < 2):
         return "refinement"
 
     return "write"

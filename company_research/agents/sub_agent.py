@@ -134,17 +134,10 @@ Original context sample (first 2000 chars):
 REFLECTION TASK:
 1. Is the research complete and thorough?
 2. What aspects might be missing or need more detail?
-3. FOR NEWS ITEMS: Are dates as precise as possible? Did you check for ISO dates (YYYY-MM-DD), full written dates, and timestamps?
-4. What's your confidence level? (high/medium/low)
-5. What should be done next to improve these findings?
+3. What's your confidence level? (high/medium/low)
+4. What should be done next to improve these findings?
 
-CRITICAL FOR NEWS QUESTIONS:
-- If you have vague dates like "2025" or "Q4 2025", did you search for more precise dates?
-- Did you check the source content for ISO format dates like "2025-06-25"?
-- Did you look for phrases like "announced on", "as of", "dated", publication dates?
-- DATE VALIDATION: Are there any dates AFTER November 27, 2025? If yes, they are INVALID and should be removed/replaced
-- COMPLETENESS CHECK: If the question is about news, did you extract EVERY news item from ALL sources? Count them - did you extract 5 items? 10? 20? Are you sure there aren't more?
-- Did you search for: fund closures, acquisitions, exits, appointments, partnerships, awards, surveys, press releases?
+{question_specific_checklist}
 
 Be critical and thorough in your assessment.
 """
@@ -213,17 +206,206 @@ REFINEMENT_PROMPT = ChatPromptTemplate.from_messages([
 ])
 
 
-def build_context(pages: List[PageContent]) -> str:
-    """Build context string from pages with complete markdown content.
+def get_reflection_checklist(question: str) -> str:
+    """Generate question-type-specific reflection checklist.
+
+    V2.9: Enhanced reflection with targeted checklists for quality
+
+    Args:
+        question: The research question
+
+    Returns:
+        Formatted checklist string for reflection prompt
+    """
+    question_lower = question.lower()
+
+    # NEWS/ANNOUNCEMENTS CHECKLIST
+    if any(word in question_lower for word in ["news", "announcement", "press release"]):
+        return """
+CRITICAL CHECKLIST FOR NEWS QUESTIONS:
+☐ Did you count all news items? How many did you extract? (5? 10? 20?)
+☐ Did you search ALL sources for: fund closures, acquisitions, exits, appointments, partnerships, awards, surveys, press releases?
+☐ Are dates as precise as possible? Did you check for:
+   - ISO dates (YYYY-MM-DD like "2025-06-25")
+   - Full written dates ("June 25, 2025", "October 31, 2025")
+   - Quarter dates ("Q4 2025")
+   - Month-year dates ("November 2025")
+   - Publication timestamps in metadata
+☐ DATE VALIDATION: Are there any dates AFTER November 27, 2025? If yes, they are INVALID
+☐ Did you check phrases like "announced on", "as of", "dated" for dates?
+☐ Did you extract headlines/titles for each news item?
+☐ Are you CERTAIN there aren't more news items you missed?
+"""
+
+    # PEOPLE/LEADERSHIP CHECKLIST
+    elif any(word in question_lower for word in ["decision maker", "leadership", "team", "people", "executive"]):
+        return """
+CRITICAL CHECKLIST FOR PEOPLE/LEADERSHIP QUESTIONS:
+☐ Did you extract EVERY name mentioned across ALL pages?
+☐ Did EVERY person have a complete title/position?
+☐ Did you check for:
+   - Executive titles (CEO, CTO, CFO, COO, Managing Director, Partner)
+   - Senior titles (Senior Partner, Principal, Executive Director)
+   - Academic credentials (PhD, MD, MBA, JD, CFA)
+   - Board roles (Board Member, Trustee, Independent Director)
+☐ Did you search team pages, about pages, leadership pages, bios?
+☐ Did you look for team listings in case studies or news items?
+☐ Did you count how many people you extracted? Is that comprehensive for this company size?
+☐ Did you check for Advisory Board or Board of Directors separately?
+"""
+
+    # PORTFOLIO/COMPANIES CHECKLIST
+    elif any(word in question_lower for word in ["portfolio", "compan", "invest", "firm"]):
+        return """
+CRITICAL CHECKLIST FOR PORTFOLIO/COMPANIES QUESTIONS:
+☐ Did you count how many companies you extracted?
+☐ Did you search ALL sources including: portfolio pages, case studies, press releases, news items?
+☐ For each company, did you extract:
+   - Company name (exact spelling)
+   - Sector/industry
+   - Stage (early, late, growth, etc.)
+   - Any other details (location, investment date, ownership)
+☐ Did you check case study pages for additional companies?
+☐ Did you check news announcements for recent investments/acquisitions?
+☐ Did you look for portfolio lists, tables, or structured data?
+☐ Are you CERTAIN you didn't miss any companies mentioned in the sources?
+"""
+
+    # AUM/FINANCIAL METRICS CHECKLIST
+    elif any(word in question_lower for word in ["aum", "assets under management", "fund size", "capital"]):
+        return """
+CRITICAL CHECKLIST FOR FINANCIAL METRICS QUESTIONS:
+☐ Did you find specific dollar amounts? ($500M, $2.5B, etc.)
+☐ Did you find percentages? (ownership stakes, returns, growth rates)
+☐ Did you extract dates for when these metrics were reported?
+☐ Did you search for: total AUM, fund sizes, committed capital, dry powder?
+☐ Did you check multiple pages (about, fund pages, press releases) for metrics?
+☐ Did you find metrics for individual funds vs. total platform?
+☐ If no metrics found, did you check footnotes, disclaimers, regulatory disclosures?
+☐ Did you note if metrics are "as of" a specific date?
+"""
+
+    # STRATEGY/FUNDS CHECKLIST
+    elif any(word in question_lower for word in ["strateg", "fund", "program"]):
+        return """
+CRITICAL CHECKLIST FOR STRATEGY/FUNDS QUESTIONS:
+☐ Did you list EVERY fund/strategy mentioned by name?
+☐ For each strategy, did you extract:
+   - Official name
+   - Focus area (sector, stage, geography)
+   - Description/approach
+   - Fund size (if available)
+☐ Did you check dedicated strategy/fund pages?
+☐ Did you look for sub-strategies or programs within main strategies?
+☐ Did you count how many strategies you found? Is that complete?
+☐ Did you check for vintage/launch dates?
+"""
+
+    # GENERIC CHECKLIST
+    else:
+        return """
+CRITICAL CHECKLIST:
+☐ Did you extract ALL relevant information from ALL sources?
+☐ Did you use specific details (names, dates, numbers) rather than summaries?
+☐ Did you check all pages including case studies, news, and specialized sections?
+☐ Are you confident this is comprehensive or might you have missed information?
+☐ Did you use inline citations [1], [2], [3] for every fact?
+"""
+
+
+def extract_keywords(question: str) -> List[str]:
+    """Extract key terms from question for relevance ranking.
+
+    V2.9: Helper for smart context building
+
+    Args:
+        question: Research question
+
+    Returns:
+        List of keywords to look for
+    """
+    keywords = []
+    question_lower = question.lower()
+
+    # Question-type keywords
+    if "news" in question_lower or "announcement" in question_lower:
+        keywords.extend(["news", "announcement", "press release", "announced", "partnership", "acquisition", "fund closure", "appointment", "award"])
+    if "decision maker" in question_lower or "leadership" in question_lower or "team" in question_lower:
+        keywords.extend(["team", "leadership", "partner", "director", "executive", "ceo", "cfo", "cto", "management", "our team"])
+    if "portfolio" in question_lower or "companies" in question_lower or "invest" in question_lower:
+        keywords.extend(["portfolio", "investment", "company", "companies", "case study", "exits", "acquisition"])
+    if "aum" in question_lower or "assets" in question_lower:
+        keywords.extend(["aum", "assets under management", "billion", "million", "capital", "fund size"])
+    if "strategy" in question_lower or "fund" in question_lower:
+        keywords.extend(["strategy", "fund", "approach", "focus", "program", "venture", "growth", "stage"])
+    if "region" in question_lower or "sector" in question_lower:
+        keywords.extend(["region", "sector", "industry", "geography", "market", "focus area"])
+
+    return keywords
+
+
+def calculate_page_relevance(page: PageContent, keywords: List[str]) -> float:
+    """Calculate relevance score for a page based on keywords.
+
+    V2.9: Used for smart context ranking
+
+    Args:
+        page: Page content
+        keywords: List of keywords to search for
+
+    Returns:
+        Relevance score (higher is more relevant)
+    """
+    if not keywords:
+        return 1.0  # No keywords = equal relevance
+
+    text_lower = (page.title + " " + page.text).lower()
+    score = 0.0
+
+    for keyword in keywords:
+        # Count occurrences (normalized by text length to favor density over volume)
+        count = text_lower.count(keyword.lower())
+        if count > 0:
+            # Title matches worth more
+            if keyword.lower() in page.title.lower():
+                score += 5.0
+            # Content matches
+            score += count * (1000.0 / max(len(text_lower), 1000))  # Normalize by text length
+
+    return score
+
+
+def build_context(pages: List[PageContent], question: str = None) -> str:
+    """Build context string from pages with smart relevance ranking.
+
+    V2.9: Pages are ranked by keyword relevance to question,
+    with most relevant pages placed first for better LLM attention.
 
     Args:
         pages: List of PageContent objects
+        question: Research question (optional, for smart ranking)
 
     Returns:
-        Formatted context string with complete content and URL references
+        Formatted context string with content ranked by relevance
     """
+    # Smart ranking if question provided
+    if question:
+        keywords = extract_keywords(question)
+        if keywords:
+            # Calculate relevance and sort
+            pages_with_scores = [(p, calculate_page_relevance(p, keywords)) for p in pages]
+            pages_with_scores.sort(key=lambda x: x[1], reverse=True)
+            sorted_pages = [p for p, score in pages_with_scores]
+
+            log_verbose(f"      Context ranking: Using {len(keywords)} keywords to rank {len(pages)} pages")
+        else:
+            sorted_pages = pages
+    else:
+        sorted_pages = pages
+
+    # Build context with ranked pages
     chunks = []
-    for i, p in enumerate(pages, start=1):
+    for i, p in enumerate(sorted_pages, start=1):
         chunks.append(f"=== SOURCE [{i}] ===\nURL: {p.url}\nTitle: {p.title}\n\n{p.text}\n")
     return "\n\n" + "="*80 + "\n\n".join(chunks)
 
@@ -248,9 +430,11 @@ def execute_sub_agent(
     llm = get_llm()
     reflection_llm = get_llm().with_structured_output(Reflection)
 
-    # Build context from all pages
+    # Build context from all pages with smart ranking
+    # V2.9: Context now ranked by keyword relevance to question
     log_verbose(f"   Building context for {task.task_id}...")
-    context = build_context(pages)
+    question_for_context = original_question if task.is_refinement and original_question else task.question
+    context = build_context(pages, question=question_for_context)
     context_size = len(context)
     log_verbose(f"      Context size: {format_size(context_size)} from {len(pages)} pages")
 
@@ -328,19 +512,26 @@ These are the MOST LIKELY locations of the missing information.
     log_verbose(f"      Findings size: {format_size(len(findings))}")
 
     # Step 2: Reflection - Self-critique
+    # V2.9: Enhanced with question-specific checklists
     print(f"  → Sub-agent reflecting on: {task.task_id}")
     context_sample = context[:2000]  # Sample for reflection
+
+    # Get question-specific checklist for targeted reflection
+    question_for_checklist = original_question if task.is_refinement and original_question else task.question
+    checklist = get_reflection_checklist(question_for_checklist)
 
     reflection_prompt_text = REFLECTION_PROMPT.format(
         question=task.question,
         findings=findings[:500] + "...",
-        context_sample=context_sample[:300] + "..."
+        context_sample=context_sample[:300] + "...",
+        question_specific_checklist=checklist[:200] + "..."
     )
 
     reflection = (REFLECTION_PROMPT | reflection_llm).invoke({
         "question": task.question,
         "findings": findings,
         "context_sample": context_sample,
+        "question_specific_checklist": checklist,
     })
 
     log_llm_call(
